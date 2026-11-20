@@ -18,7 +18,7 @@ Kamion B 162,9 km), oba vozača unutar 9 h. Rješenje je **dokazano optimalno**
 | Kratke upute za pokretanje | [1. Pokretanje](#1-pokretanje) |
 | Funkcionalna demonstracija | [2. Funkcionalna demonstracija](#2-funkcionalna-demonstracija) |
 | Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
-| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 20 testova u `tests/test_constraints.py` |
+| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 25 testova u `tests/test_constraints.py` |
 | Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
 | Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
 
@@ -91,7 +91,8 @@ veličinu (10 naloga, 2 kamiona) može se riješiti **egzaktno**, pa sam umjesto
 heuristike odabrao algoritam koji jamči optimum.
 
 **Korak 1 – optimalna ruta za svaki kamion i svaki podskup naloga (dinamičko programiranje).**
-Stanje = status svakog naloga (0 = čeka, 1 = na kamionu, 2 = isporučen) + trenutna lokacija.
+Stanje = status svakog naloga (čeka / na kamionu / isporučen, zapisano kao dvije bitmaske)
++ trenutna lokacija.
 Iz stanja se smije samo:
 - **preuzeti** nalog koji čeka, ako stroj stane po težini i broju mjesta;
 - **isporučiti** nalog koji je na kamionu.
@@ -100,15 +101,28 @@ Zato nosivost i redoslijed preuzimanje → isporuka *ne mogu* biti prekršeni. S
 povećava zbroj statusa za 1, pa se stanja obrađuju po razinama i za svako se pamti najkraći
 put. Kad je kamion prazan, ruta se zatvori povratkom u bazu. Tako za **svaki** podskup naloga
 dobijemo najkraću rutu baza → … → baza. Zbog kapaciteta (najviše 2 odnosno 3 stroja)
-dostižnih stanja ima malo, pa izračun traje oko 0,2 s.
+dostižnih stanja ima malo, pa izračun traje oko 0,2 s. Stanja koja već premašuju radno
+vrijeme (prijeđeni km + obavljeni i neizbježni utovari/istovari) odmah se odbacuju; povratak
+u bazu se namjerno ne procjenjuje, jer zaokruživanje dionica može narušiti nejednakost
+trokuta, a rezanje mora ostati egzaktno.
 
 **Korak 2 – podjela između kamiona.** Kamion A smije voziti samo strojeve ≤ 3.500 kg
 (N01–N05), kamion B sve. Od svih parova *disjunktnih* podskupova koji stanu u radno
-vrijeme bira se onaj s:
+vrijeme bira se onaj s (nabrajanjem podskupova slobodnih naloga, najviše 3^n kombinacija;
+isti kamioni s istim nalozima računaju se samo jednom):
 1. **najviše izvršenih naloga** (prioritet: ništa ne ostaje neisporučeno), zatim
 2. **najmanjom ukupnom kilometražom**.
 
 Nalozi koji ne stanu označe se kao neizvršivi, s razlogom.
+
+**Veći problemi – heuristika (`optimizer/heuristic.py`).** Ako neki kamion ima više od 12
+mogućih naloga (3^n stanja postaje presporo), aplikacija ne pada, nego koristi:
+najjeftinije izvedivo umetanje para preuzimanje/isporuka → lokalnu pretragu (premještanje
+naloga između kamiona i pomicanje pojedinih radnji unutar rute) → više početnih redoslijeda
+(fiksni seed, rezultat je ponovljiv). Aplikacija tada jasno upozorava da raspored nije dokazano
+optimalan, a validator ga provjerava kao i egzaktni. Na zadanim podacima heuristika daje
+219,7 km (+9,8 % od optimuma), a uz limit samo za vožnju 183,6 km (+0,8 %). Uz limit od 4 h
+izvrši 6 naloga, a optimum 7, pa se za ≤ 12 naloga po kamionu uvijek koristi egzaktni DP.
 
 **Pravila izračuna**
 - Udaljenost: euklidska, zaokružena na 0,1 km **po dionici**. Interno se računa u
@@ -135,7 +149,7 @@ M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
 
 ## 4. Testovi
 
-`pytest -v` pokreće 20 testova u `tests/test_constraints.py`, među ostalim:
+`pytest -v` pokreće 25 testova u `tests/test_constraints.py`, među ostalim:
 
 - nosivost i broj strojeva nikad nisu prekoračeni ni nakon jedne radnje;
 - strojevi teži od 3.500 kg nikad ne idu kamionom A; M10 uvijek putuje sam;
@@ -148,6 +162,8 @@ M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
   isporuka prije preuzimanja, krivo prikazan teret u tablici);
 - neispravni ulazni podaci (dupla oznaka naloga, težina 0, ista lokacija preuzimanja i
   isporuke, kamion bez nosivosti, nedostaje baza) odbijaju se jasnom porukom;
+- rubni slučajevi: nema vozila, scenarij „bez ograničenja” uz malu brzinu, više od 12 naloga
+  po kamionu (heuristika poštuje sva ograničenja), validator ne pada na nepoznat nalog;
 - **optimalnost:** rezultat DP-a jednak je brute-forceu (sve permutacije radnji) na manjim
   primjerima.
 
@@ -160,7 +176,8 @@ aplikacija za zeleni/crveni status.
 ```
 app.py                    Streamlit web sučelje
 optimizer/data.py         ulazni podaci zadatka i provjera ulaza
-optimizer/solver.py       optimizacijski algoritam
+optimizer/solver.py       optimizacijski algoritam (egzaktni DP + optimalna podjela)
+optimizer/heuristic.py    heuristika za veće probleme (umetanje + lokalna pretraga)
 optimizer/validate.py     nezavisna provjera ograničenja
 optimizer/__main__.py     ispis u terminalu
 tests/test_constraints.py testovi poslovnih ograničenja
@@ -194,6 +211,17 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
    od 4 h, ručni izračun) i aplikaciju u pregledniku. Pritom sam našao i ispravio: test
    neizvršivih naloga koji bi prošao gotovo s bilo kojim tekstom, nedostajuću provjeru
    ulaznih podataka (dupli nalog tiho bi pregazio drugi) i preniski minimum verzije Streamlita.
+8. **Tehnički pregled (code review).** Svaku sumnju sam potvrdio prije popravka:
+   - **gubljenje uređivanja u tablicama** – izlaz `data_editora` vraćao se kao njegov ulaz, a kod
+     `num_rows="dynamic"` identitet widgeta ovisi o podacima. U pregledniku (Playwright) druga
+     uzastopna izmjena iste tablice bila je izgubljena. Sada se izmjene upisuju u izvorne
+     tablice u `on_change` povratnom pozivu, a isti test u pregledniku potvrđuje obje izmjene;
+   - scenarij „bez ograničenja” zapravo je imao limit od 24 h (uz 5 km/h izvršio 9/10);
+   - više od 12 naloga po kamionu rušilo je izračun → heuristika;
+   - pogrešan razlog kad nema vozila; validator je mogao pasti na nepoznatom nalogu;
+   - DP je ubrzan oko 5 puta (12 naloga, oba kamiona po 10 t: 12 s → 2 s), uz iste rezultate
+     (testovi brute force i OR-Tools);
+   - uklonjen neiskorišten kod (`distance_matrix`, `Plan.notes`) i `sys.path` hack u testovima.
 
 ## 7. Procjena utrošenog vremena
 
@@ -205,12 +233,14 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
 | Testovi i neovisne provjere (OR-Tools, brute force, ručno) | 1 h |
 | Dokumentacija | 0,5 h |
 | Završni pregled (provjera svih brojki, validacija ulaza, dodatni testovi) | 0,5 h |
-| **Ukupno** | **~4,5 h** |
+| Tehnički pregled: bugovi, rubni slučajevi, ubrzanje, heuristika | 1,5 h |
+| **Ukupno** | **~6 h** |
 
 ## 8. Ograničenja i mogući nastavak
 
-- Egzaktni DP praktičan je do ~12 naloga po kamionu. Za stvarni dnevni volumen UP Renta
-  prebacio bih se na OR-Tools/heuristiku (model je već napisan u `tools/verify_ortools.py`).
+- Egzaktni DP praktičan je do ~12 naloga po kamionu; iznad toga radi ugrađena heuristika.
+  Za stvarni dnevni volumen UP Renta koristio bih OR-Tools (model je već napisan u
+  `tools/verify_ortools.py`) ili jaču metaheuristiku (npr. ALNS).
 - Prema zadatku koriste se euklidske udaljenosti; za produkciju trebaju stvarne ceste
   (OSRM/Google Distance Matrix) i vremenski prozori kupaca.
 - Planiranje na više dana, prioriteti naloga, vozač bez kamiona i slično nisu dio zadatka.

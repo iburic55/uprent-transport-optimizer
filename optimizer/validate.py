@@ -28,7 +28,10 @@ def validate_plan(plan: Plan, orders: list[Order], locations: list[Location]) ->
         here, km, load, onboard = s.base, 0.0, 0, set()
         picked: set[str] = set()
         for k, (code, act) in enumerate(tp.actions, start=1):
-            o = by_code[code]
+            o = by_code.get(code)
+            if o is None:
+                errors.append(f"{t.name}: nalog {code} ne postoji u popisu naloga.")
+                continue
             if act == PICKUP:
                 if code in picked:
                     errors.append(f"{t.name}: nalog {code} preuzet dvaput.")
@@ -75,6 +78,8 @@ def validate_plan(plan: Plan, orders: list[Order], locations: list[Location]) ->
             errors.append(f"{t.name}: prekoračeno radno vrijeme ({used / 60:.2f} h > {s.max_hours} h).")
 
     unassigned = {o.code for o, _ in plan.unassigned}
+    for code in sorted(unassigned & set(seen)):
+        errors.append(f"Nalog {code} je izvršen, a istodobno označen kao neizvršiv.")
     for o in orders:
         if o.code not in seen and o.code not in unassigned:
             errors.append(f"Nalog {o.code} nije ni izvršen ni označen kao neizvršiv.")
