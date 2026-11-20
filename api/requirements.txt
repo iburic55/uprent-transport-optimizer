@@ -1,0 +1,2 @@
+# Ovisnosti samo za Vercel funkciju (bez Streamlita, pandasa i plotlyja).
+fastapi>=0.115
