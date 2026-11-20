@@ -74,8 +74,11 @@ python tools/verify_ortools.py
 
 ## 2. Funkcionalna demonstracija
 
-🎬 **Video demonstracija (2:17, bez zvuka, s titlovima):** [`docs/demo.mp4`](docs/demo.mp4)
-– snimljen automatski skriptom `tools/record_demo.js` (Playwright), pa se može ponovno snimiti.
+🎬 **Video demonstracija (4:45, bez zvuka):** [`docs/demo.mp4`](docs/demo.mp4). Svaki od 33
+koraka (klik, unos, pokazivanje) ima titl na hrvatskom: **što se radi** i **zašto / što se vidi**,
+uz oznaku radnje kraj kursora i brojač koraka. Titlovi su i zasebno u [`docs/demo.srt`](docs/demo.srt)
+te kao isključiva titlovna traka u MP4. Video je snimljen automatski skriptom
+`tools/record_demo.js` (Playwright), pa se nakon izmjena može ponovno snimiti.
 
 Nakon `uvicorn api.main:app` aplikacija se otvara na http://localhost:8000. Za demonstraciju
 predlažem ovaj redoslijed (oko 3 minute):
