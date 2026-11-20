@@ -97,14 +97,19 @@ export function SettingsPanel({
           value={settings.speed_kmh} min={10} max={120} step={5} onChange={(v) => set("speed_kmh", v)} />
         <div className="flex items-start justify-between gap-4 rounded-xl bg-slate-50 p-3 dark:bg-slate-800/50">
           <label htmlFor="handling-counts" className="text-sm">
-            <span className="font-medium">Utovar/istovar ulazi u limit</span>
-            <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-              {settings.handling_counts
-                ? "Vožnja + utovar/istovar ≤ limit (zadano, konzervativno)"
-                : "Limit vrijedi samo za vrijeme vožnje"}
-            </span>
+            <span className="font-medium">U radno vrijeme se broji utovar/istovar</span>
+            {settings.handling_counts ? (
+              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                Uključeno (zadano): u {settings.max_hours} h se broji vožnja + utovar/istovar.
+              </span>
+            ) : (
+              <span className="mt-0.5 block text-xs text-amber-700 dark:text-amber-400">
+                Isključeno: u {settings.max_hours} h se broji samo vožnja. Pazi: vozač tada
+                stvarno radi dulje od {settings.max_hours} h.
+              </span>
+            )}
           </label>
-          <Switch id="handling-counts" label="Utovar/istovar ulazi u limit" checked={settings.handling_counts}
+          <Switch id="handling-counts" label="U radno vrijeme se broji utovar/istovar" checked={settings.handling_counts}
             onChange={(v) => set("handling_counts", v)} />
         </div>
         <Button className="w-full" onClick={onReset} disabled={!dirty}>

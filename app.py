@@ -90,9 +90,14 @@ with st.sidebar:
     handling = st.number_input("Utovar ili istovar (min po radnji)", 0.0, 120.0, 20.0, 5.0)
     speed = st.number_input("Prosječna brzina (km/h)", 10.0, 120.0, 60.0, 5.0)
     handling_counts = st.toggle(
-        "Utovar/istovar ulazi u dnevni limit", value=True,
-        help="Uključeno (zadano, konzervativno): vožnja + utovar/istovar ≤ limit. "
-             "Isključeno: limit se odnosi samo na vrijeme vožnje.")
+        "U radno vrijeme se broji utovar/istovar", value=True,
+        help="Uključeno (zadano): u limit se broji vožnja + utovar/istovar. "
+             "Isključeno: u limit se broji samo vožnja.")
+    if handling_counts:
+        st.caption(f"Uključeno (zadano): u {max_hours:g} h se broji vožnja + utovar/istovar.")
+    else:
+        st.warning(f"Isključeno: u {max_hours:g} h se broji samo vožnja. "
+                   f"Pazi: vozač tada stvarno radi dulje od {max_hours:g} h.")
     st.divider()
     if st.button("↺ Vrati zadane podatke", width="stretch"):
         st.session_state.data = default_frames()
