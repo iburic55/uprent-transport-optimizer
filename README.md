@@ -28,10 +28,6 @@ Manje zamke:
 
 ![Raspored – React sučelje](docs/react-raspored.png)
 
-📘 **Upute u PDF-u (17 str.):** [`docs/Upute.pdf`](docs/Upute.pdf). Sadrže brzi start, instalaciju,
-vodič kroz sučelje s označenim snimkama, česte zadatke, optimizacijsku logiku, provjeru i
-rješavanje problema. 🎬 **Video:** [`docs/demo.mp4`](docs/demo.mp4)
-
 ## Sadržaj predaje
 
 | Traženo u zadatku (točka 8) | Gdje se nalazi |
@@ -231,7 +227,6 @@ tests/test_constraints.py testovi poslovnih ograničenja
 tests/test_api.py         testovi REST API-ja
 tools/verify_ortools.py   neovisna usporedba s Google OR-Toolsom
 tools/record_demo.js      automatsko snimanje demonstracijskog videa (Playwright)
-tools/build_manual.js     izrada PDF uputa iz docs/upute/upute.html (snimke + PDF)
 ```
 
 **Tehnologije**
