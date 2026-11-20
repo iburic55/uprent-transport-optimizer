@@ -1,6 +1,6 @@
-import { ArrowDownToLine, ArrowUpFromLine, ChevronRight, Flag, Home } from "lucide-react";
+import { ArrowDownToLine, ArrowUpFromLine, ChevronDown, ChevronRight, Flag, Home } from "lucide-react";
 import { motion } from "motion/react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { cn, hhmm, kg, km, nalog, truckColor } from "../lib/format";
 import type { StepKind, TruckPlan } from "../lib/types";
 import { useWidth } from "../lib/useWidth";
@@ -14,9 +14,9 @@ const KIND: Record<StepKind, { label: string; icon: ReactNode; cls: string }> = 
 };
 
 /** Teret nakon svake radnje (stepenasti graf) s crtom nosivosti. */
-function LoadChart({ t, color }: { t: TruckPlan; color: string }) {
+function LoadChart({ t, color, H = 150 }: { t: TruckPlan; color: string; H?: number }) {
   const [ref, W] = useWidth<HTMLDivElement>();
-  const H = 150, P = { l: 44, r: 12, t: 14, b: 22 };
+  const P = { l: 44, r: 12, t: 14, b: 22 };
   const n = t.steps.length - 1;
   const x = (i: number) => P.l + (n ? (i / n) * (W - P.l - P.r) : 0);
   const y = (v: number) => P.t + (1 - v / t.capacity_kg) * (H - P.t - P.b);
@@ -59,34 +59,43 @@ function LoadChart({ t, color }: { t: TruckPlan; color: string }) {
   );
 }
 
-export function TruckCard({ t, index }: { t: TruckPlan; index: number }) {
+/**
+ * Kartica kamiona. `compact`: za prikaz dviju kartica jedna uz drugu – bez oznaka u zaglavlju
+ * (te brojke su u usporedbi kamiona), niži graf, a tablica radnji otvara se na klik.
+ */
+export function TruckCard({ t, index, compact = false }: { t: TruckPlan; index: number; compact?: boolean }) {
   const color = truckColor(index);
+  const [open, setOpen] = useState(!compact);
+  useEffect(() => setOpen(!compact), [compact]);
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+      <div className={cn("flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800",
+        compact ? "px-4 py-3" : "px-5 py-4")}>
         <div className="flex items-center gap-3">
           <div className="flex size-10 items-center justify-center rounded-xl text-sm font-bold text-white shadow-sm"
             style={{ backgroundColor: color }}>{t.name.slice(-1)}</div>
           <div>
             <h3 className="font-semibold tracking-tight">{t.name}</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              nosivost {kg(t.capacity_kg)} · max {t.max_machines} stroja
+              {compact
+                ? <>{km(t.km)} · {nalog(t.orders_done.length)} · {hhmm(t.total_min)} h</>
+                : <>nosivost {kg(t.capacity_kg)} · max {t.max_machines} stroja</>}
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-2">
+        {!compact && <div className="flex flex-wrap gap-2">
           <Badge tone="indigo">{km(t.km)}</Badge>
           <Badge>{nalog(t.orders_done.length)}</Badge>
           <Badge>vožnja {hhmm(t.drive_min)} + radnje {hhmm(t.handling_min)} = {hhmm(t.total_min)} h</Badge>
           <Badge tone={t.peak_load_kg / t.capacity_kg > 0.95 ? "amber" : "slate"}>vrh tereta {kg(t.peak_load_kg)}</Badge>
-        </div>
+        </div>}
       </div>
 
       {t.orders_done.length === 0 ? (
         <p className="p-5 text-sm text-slate-500">Kamion nije potreban – ostaje u bazi.</p>
       ) : (
-        <div className="space-y-5 p-5">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className={cn(compact ? "space-y-4 p-4" : "space-y-5 p-5")}>
+          {!compact && <div className="flex flex-wrap items-center gap-1">
             {t.route.map((c, i) => (
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight className="size-3.5 text-slate-300 dark:text-slate-600" />}
@@ -96,50 +105,68 @@ export function TruckCard({ t, index }: { t: TruckPlan; index: number }) {
                 </span>
               </span>
             ))}
-          </div>
+          </div>}
 
           <div>
             <div className="mb-1 text-xs font-medium tracking-wide text-slate-500 uppercase dark:text-slate-400">Teret nakon svake radnje</div>
-            <LoadChart t={t} color={color} />
+            <LoadChart t={t} color={color} H={compact ? 120 : 150} />
           </div>
 
-          <div className="-mx-5 overflow-x-auto">
+          {compact && (
+            <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800/50">
+              <ChevronDown className={cn("size-4 transition-transform", open && "rotate-180")} />
+              {open ? "Sakrij radnje" : `Prikaži radnje (${t.steps.length})`}
+            </button>
+          )}
+
+          {open && <div className={cn("overflow-x-auto", compact ? "-mx-4" : "-mx-5")}>
             <table className="w-full text-sm whitespace-nowrap">
               <thead>
                 <tr className="border-y border-slate-100 bg-slate-50/60 text-left text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-800/30 dark:text-slate-400">
-                  {["#", "Lokacija", "Radnja", "Nalog", "Stroj", "Dionica", "Ukupno", "Teret nakon radnje", "Strojeva", "Vrijeme"].map((h) => (
-                    <th key={h} className="px-3 py-2 font-medium first:pl-5 last:pr-5">{h}</th>
+                  {(compact
+                    ? ["#", "Lok.", "Radnja", "Nalog", "Ukupno", "Teret", "Str.", "Vrijeme"]
+                    : ["#", "Lokacija", "Radnja", "Nalog", "Stroj", "Dionica", "Ukupno", "Teret nakon radnje", "Strojeva", "Vrijeme"]
+                  ).map((h) => (
+                    <th key={h} className={cn("py-2 font-medium", compact ? "px-2 first:pl-4 last:pr-4" : "px-3 first:pl-5 last:pr-5")}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {t.steps.map((s) => {
                   const k = KIND[s.kind];
+                  const td = compact ? "px-2 py-1.5" : "px-3 py-2";
                   return (
                     <tr key={s.seq} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30">
-                      <td className="px-3 py-2 pl-5 text-slate-400 tabular">{s.seq}</td>
-                      <td className="px-3 py-2 font-medium">{s.location}</td>
-                      <td className="px-3 py-2"><span className={cn("inline-flex items-center gap-1.5 font-medium", k.cls)}>{k.icon}{k.label}</span></td>
-                      <td className="px-3 py-2">{s.order ?? ""}</td>
-                      <td className="px-3 py-2">{s.machine ? <>{s.machine} <span className="text-slate-400">({kg(s.weight_kg ?? 0)})</span></> : ""}</td>
-                      <td className="px-3 py-2 text-right tabular">{km(s.leg_km)}</td>
-                      <td className="px-3 py-2 text-right tabular">{km(s.cum_km)}</td>
-                      <td className="px-3 py-2">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
-                            <div className="h-full rounded-full" style={{ width: `${(s.load_kg / t.capacity_kg) * 100}%`, backgroundColor: color }} />
-                          </div>
-                          <span className="tabular">{kg(s.load_kg)}</span>
-                        </div>
+                      <td className={cn(td, compact ? "pl-4" : "pl-5", "text-slate-400 tabular")}>{s.seq}</td>
+                      <td className={cn(td, "font-medium")}>{s.location}</td>
+                      <td className={td} title={compact ? `${k.label}${s.machine ? ` ${s.machine} (${kg(s.weight_kg ?? 0)})` : ""}` : undefined}>
+                        <span className={cn("inline-flex items-center gap-1.5 font-medium", k.cls)}>
+                          {k.icon}{compact ? (s.kind === "pickup" ? "Utovar" : s.kind === "delivery" ? "Istovar" : k.label) : k.label}
+                        </span>
                       </td>
-                      <td className="px-3 py-2 text-center tabular">{s.machines_on_board} / {t.max_machines}</td>
-                      <td className="px-3 py-2 pr-5 tabular">{hhmm(s.elapsed_min)}</td>
+                      <td className={td}>{s.order ?? ""}</td>
+                      {!compact && <td className={td}>{s.machine ? <>{s.machine} <span className="text-slate-400">({kg(s.weight_kg ?? 0)})</span></> : ""}</td>}
+                      {!compact && <td className={cn(td, "text-right tabular")}>{km(s.leg_km)}</td>}
+                      <td className={cn(td, "text-right tabular")}>{km(s.cum_km)}</td>
+                      <td className={td}>
+                        {compact ? <span className="tabular">{kg(s.load_kg)}</span> : (
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                              <div className="h-full rounded-full" style={{ width: `${(s.load_kg / t.capacity_kg) * 100}%`, backgroundColor: color }} />
+                            </div>
+                            <span className="tabular">{kg(s.load_kg)}</span>
+                          </div>
+                        )}
+                      </td>
+                      <td className={cn(td, "text-center tabular")}>{s.machines_on_board} / {t.max_machines}</td>
+                      <td className={cn(td, compact ? "pr-4" : "pr-5", "tabular")}>{hhmm(s.elapsed_min)}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
-          </div>
+          </div>}
         </div>
       )}
     </Card>

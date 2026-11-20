@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
-  AlertTriangle, BookOpen, CalendarRange, CheckCircle2, Cpu, Database, Loader2, Map as MapIcon,
-  Moon, Scale, ShieldAlert, Sun, Truck, XCircle,
+  AlertTriangle, BookOpen, CalendarRange, CheckCircle2, Columns2, Cpu, Database, Loader2, Map as MapIcon,
+  Moon, Rows3, Scale, ShieldAlert, Sun, Truck, XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
@@ -12,6 +12,7 @@ import { RouteMap } from "./components/RouteMap";
 import { Scenarios } from "./components/Scenarios";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { TruckCard } from "./components/TruckCard";
+import { TruckComparison } from "./components/TruckComparison";
 import { Alert, Badge, Button, Card, Tabs } from "./components/ui";
 import { WorkdayTimeline } from "./components/WorkdayTimeline";
 import { fetchDefaults, fetchPlan } from "./lib/api";
@@ -33,6 +34,7 @@ function useTheme() {
 export default function App() {
   const [dark, setDark] = useTheme();
   const [tab, setTab] = useState<Tab>("schedule");
+  const [view, setView] = useState<"compare" | "detail">("compare");
   const defaults = useQuery({ queryKey: ["defaults"], queryFn: fetchDefaults, staleTime: Infinity });
   const [problem, setProblem] = useState<Problem | null>(null);
   useEffect(() => { if (defaults.data && !problem) setProblem(defaults.data); }, [defaults.data, problem]);
@@ -172,8 +174,33 @@ export default function App() {
               )}
               {tab === "schedule" && plan && problem && (
                 <>
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      {view === "compare" ? "Kamioni jedan uz drugoga; tablice radnji otvaraju se na klik." : "Puni prikaz svakog kamiona, jedan ispod drugoga."}
+                    </p>
+                    <div role="radiogroup" aria-label="Prikaz rasporeda"
+                      className="inline-flex gap-1 rounded-xl border border-slate-200 bg-white p-1 text-sm dark:border-slate-800 dark:bg-slate-900/60">
+                      {([["compare", "Usporedno", <Columns2 key="c" className="size-4" />], ["detail", "Detaljno", <Rows3 key="d" className="size-4" />]] as const).map(([v, label, icon]) => (
+                        <button key={v} type="button" role="radio" aria-checked={view === v} onClick={() => setView(v)}
+                          className={view === v
+                            ? "flex items-center gap-1.5 rounded-lg bg-slate-900 px-3 py-1.5 font-medium text-white dark:bg-indigo-600"
+                            : "flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"}>
+                          {icon}{label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <WorkdayTimeline trucks={plan.trucks} settings={problem.settings} />
-                  {plan.trucks.map((t, i) => <TruckCard key={t.name} t={t} index={i} />)}
+                  {view === "compare" ? (
+                    <>
+                      <TruckComparison trucks={plan.trucks} settings={problem.settings} />
+                      <div className="grid items-start gap-6 lg:grid-cols-2">
+                        {plan.trucks.map((t, i) => <TruckCard key={t.name} t={t} index={i} compact />)}
+                      </div>
+                    </>
+                  ) : (
+                    plan.trucks.map((t, i) => <TruckCard key={t.name} t={t} index={i} />)
+                  )}
                 </>
               )}
               {tab === "map" && plan && problem && <RouteMap trucks={plan.trucks} locations={problem.locations} />}
