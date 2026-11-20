@@ -1,164 +1,174 @@
 1
-00:00:07,928 --> 00:00:17,076
+00:00:07,480 --> 00:00:17,869
 Otvaram aplikaciju s podacima iz zadatka
 2 kamiona, 10 strojeva, 10 lokacija i 10 naloga – raspored se izračuna automatski
 
 2
-00:00:17,076 --> 00:00:25,529
+00:00:17,869 --> 00:00:27,496
 Pokazujem ukupnu kilometražu: 200,1 km
 To je dokazani optimum za oba kamiona zajedno, uključujući povratak u bazu
 
 3
-00:00:25,529 --> 00:00:32,482
+00:00:27,496 --> 00:00:35,603
 Pokazujem broj izvršenih naloga: 10 / 10
 Svi nalozi su raspoređeni – nijedan nije neizvršiv
 
 4
-00:00:32,482 --> 00:00:42,247
+00:00:35,603 --> 00:00:46,464
 Pokazujem oznaku „Ograničenja zadovoljena”
 Nezavisni validator ponovno računa nosivost, broj strojeva, redoslijed, povratak i vrijeme
 
 5
-00:00:42,247 --> 00:00:49,753
+00:00:46,464 --> 00:00:55,024
 Pokazujem Kamion B: 162,9 km i 8:43 h rada
 Traka ispod je iskorištenost dnevnog limita: 97 % od 9 h
 
 6
-00:00:49,753 --> 00:00:58,069
-Pokazujem okvir „Zašto ne 182,2 km?”
+00:00:55,024 --> 00:01:04,393
+Otvaram traku „Zašto ne 182,2 km?”
 Najkraći raspored (sve vozi Kamion B) traje 9:42 h – preko limita od 9 h
 
 7
-00:00:58,069 --> 00:01:06,186
+00:01:04,393 --> 00:01:13,907
 Pokazujem usporedbu radnog vremena
 20 utovara/istovara × 20 min = 6 h 40 min, plus 3 h 2 min vožnje = 9:42 h
 
 8
-00:01:06,186 --> 00:01:15,622
+00:01:13,907 --> 00:01:24,832
 Pokazujem premješteni nalog N03
 Optimizator ga daje Kamionu A: +17,9 km, ali oba vozača završe unutar 9 h
 
 9
-00:01:15,622 --> 00:01:23,415
+00:01:24,832 --> 00:01:33,714
 Pomaknuo sam se na vremensku crtu radnog dana
 Boja kamiona = vožnja, zeleno = utovar, plavo = istovar
 
 10
-00:01:23,415 --> 00:01:31,891
+00:01:33,714 --> 00:01:43,378
 Prelazim mišem preko segmenta utovara
 Opis pokazuje stroj, nalog, lokaciju i vrijeme – svaka radnja traje 20 min
 
 11
-00:01:31,891 --> 00:01:41,228
+00:01:43,378 --> 00:01:53,708
 Pokazujem crvenu crtu limita od 9 h
 Kamion B završava u 8:43, Kamion A već u 1:17 – oba unutar limita
 
 12
-00:01:41,228 --> 00:01:49,371
-Pokazujem karticu Kamiona B
-Najveći teret je 9.900 / 10.000 kg (M09 + M04) – nosivost nikad nije prekoračena
+00:01:53,708 --> 00:02:04,426
+Pokazujem usporedbu kamiona jedan uz drugoga
+Ista mjera u istom retku: 37,2 prema 162,9 km, radno vrijeme 14 % prema 97 % limita
 
 13
-00:01:49,371 --> 00:01:58,941
+00:02:04,426 --> 00:02:15,110
+Pokazujem vrh tereta Kamiona B
+Najveći teret je 9.900 / 10.000 kg (M09 + M04) – nosivost nikad nije prekoračena
+
+14
+00:02:15,110 --> 00:02:24,509
 Pokazujem graf tereta nakon svake radnje
 Isprekidana crta je nosivost; stroj M10 (9.400 kg) uvijek putuje sam
 
-14
-00:01:58,941 --> 00:02:09,717
-Pokazujem tablicu radnji
-Za svaki korak: lokacija, radnja, nalog, stroj, km, teret i broj strojeva nakon radnje, vrijeme
-
 15
-00:02:09,717 --> 00:02:18,500
+00:02:24,509 --> 00:02:35,372
+Klikam „Prikaži radnje”
+Tablica radnji otvara se na klik, da se kamioni mogu usporediti jedan uz drugoga
+
+16
+00:02:35,372 --> 00:02:46,978
+Pokazujem tablicu radnji
+Za svaki korak: lokacija, radnja, nalog, km, teret i broj strojeva nakon radnje, vrijeme
+
+17
+00:02:46,978 --> 00:02:57,123
 Klikam karticu „Karta”
 Rute oba kamiona na koordinatama X/Y u km; strelice pokazuju smjer vožnje
 
-16
-00:02:18,500 --> 00:02:22,569
+18
+00:02:57,123 --> 00:03:03,794
 Klikam „Pokreni vožnju”
 Kamioni se kreću po stvarnoj vremenskoj crti, uključujući 20 min za svaki utovar/istovar
 
-17
-00:02:22,569 --> 00:02:28,080
+19
+00:03:03,794 --> 00:03:09,329
 Gledamo animaciju vožnje
 Desno su trenutna radnja i teret svakog kamiona; buduće dionice su prigušene
 
-18
-00:02:28,080 --> 00:02:36,527
+20
+00:03:09,329 --> 00:03:19,321
 Kamion A završi u 1:17 i vrati se u bazu
 Kamion B nastavlja do 8:43 – sat gore desno pokazuje vrijeme od polaska
 
-19
-00:02:36,527 --> 00:02:43,076
+21
+00:03:19,321 --> 00:03:27,503
 Klikam karticu „Scenariji”
 Isti podaci, tri tumačenja dnevnog limita
 
-20
-00:02:43,076 --> 00:02:51,263
+22
+00:03:27,503 --> 00:03:37,011
 Pokazujem scenarij bez vremenskog ograničenja
 182,2 km, ali Kamion B radi 9:42 h – zato je označen „krši 9 h”
 
-21
-00:02:51,263 --> 00:03:01,486
+23
+00:03:37,011 --> 00:03:48,594
 Pokazujem scenarij „Samo vožnja ≤ limit”
 Ako se u 9 h broji samo vožnja, 182,2 km je dopušten – to je prekidač u postavkama
 
-22
-00:03:01,486 --> 00:03:10,197
+24
+00:03:48,594 --> 00:03:59,010
 Upisujem radno vrijeme vozača: 4 h
 Strože ograničenje – sve naloge više nije moguće stići u jednom danu
 
-23
-00:03:10,197 --> 00:03:19,589
+25
+00:03:59,010 --> 00:04:10,965
 Pokazujem upozorenje o neizvršivim nalozima
-Izvršeno 7/10; N06, N08 i N10 označeni su s razlogom (nema dovoljno radnog vremena)
+Izvršeno 7/10; za N06, N08 i N10 razlog po kamionu: A – stroj pretežak, B – radio bi preko 5 h
 
-24
-00:03:19,589 --> 00:03:27,471
+26
+00:04:10,965 --> 00:04:20,684
 Pokazujem novu kilometražu: 171,6 km
 Prioritet je najviše izvršenih naloga, a zatim najmanja kilometraža
 
-25
-00:03:27,471 --> 00:03:33,845
+27
+00:04:20,684 --> 00:04:28,619
 Vraćam radno vrijeme na 9 h
 Ponovno su izvršeni svi nalozi: 200,1 km
 
-26
-00:03:33,845 --> 00:03:42,633
+28
+00:04:28,619 --> 00:04:38,605
 Klikam karticu „Ulazni podaci”
 Vozni park, strojevi, lokacije i nalozi – sve se može mijenjati
 
-27
-00:03:42,633 --> 00:03:53,157
+29
+00:04:38,605 --> 00:04:51,161
 Upisujem nosivost Kamiona A: 10.000 kg
 Kamion A sada smije voziti i teže strojeve (M06–M10)
 
-28
-00:03:53,157 --> 00:04:02,991
+30
+00:04:51,161 --> 00:05:02,580
 Pokazujem novu kilometražu: 185,8 km
 Raspored je odmah preračunat; validator i dalje potvrđuje sva ograničenja
 
-29
-00:04:02,991 --> 00:04:12,599
+31
+00:05:02,580 --> 00:05:14,128
 Upisujem oznaku N01 umjesto N02
 Namjerno neispravan unos – sada postoje dva naloga N01
 
-30
-00:04:12,599 --> 00:04:19,331
+32
+00:05:14,128 --> 00:05:22,008
 Pokazujem poruku o grešci
 Aplikacija odbija neispravan unos i ne računa krivi raspored
 
-31
-00:04:19,331 --> 00:04:26,321
+33
+00:05:22,008 --> 00:05:30,493
 Klikam „Vrati zadane podatke”
 Svi podaci vraćeni su na zadatak – ponovno 200,1 km i 10/10
 
-32
-00:04:26,321 --> 00:04:32,258
+34
+00:05:30,493 --> 00:05:38,265
 Klikam ikonu mjeseca
 Uključuje se tamna tema; aplikacija radi i na mobitelu
 
-33
-00:04:32,258 --> 00:04:38,155
+35
+00:05:38,265 --> 00:05:46,000
 Klikam karticu „Raspored”
 Isti raspored u tamnoj temi – kraj demonstracije

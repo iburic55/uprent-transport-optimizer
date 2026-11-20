@@ -4,6 +4,7 @@
  *
  *   uvicorn api.main:app                 # u drugom terminalu (s izgrađenim frontendom)
  *   node tools/record_demo.js [mapa]     # -> <mapa>/*.webm + <mapa>/demo.srt
+ *   (CHROME_PATH=<chrome.exe> za vlastiti Chromium umjesto Playwrightova)
  *   ffmpeg -i <mapa>/*.webm -i <mapa>/demo.srt -map 0:v -map 1 -c:v libx264 -crf 26 \
  *          -pix_fmt yuv420p -c:s mov_text -metadata:s:s:0 language=hrv -movflags +faststart docs/demo.mp4
  *
@@ -17,7 +18,7 @@ const path = require("path");
 const URL = process.env.DEMO_URL || "http://localhost:8000";
 const OUT = process.argv[2] || path.join(__dirname, "..", "demo-video");
 const W = 1920, H = 1080;
-const TOTAL = 33; // broj koraka (provjerava se na kraju)
+const TOTAL = 35; // broj koraka (provjerava se na kraju)
 
 // --- sloj: titl, balon uz kursor, brojač koraka, kursor -----------------------------------
 const overlay = () => {
@@ -101,7 +102,7 @@ const srtTime = (ms) => {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined });
   const ctx = await browser.newContext({
     viewport: { width: W, height: H }, deviceScaleFactor: 1, colorScheme: "light",
     recordVideo: { dir: OUT, size: { width: W, height: H } },
@@ -160,7 +161,7 @@ const srtTime = (ms) => {
   await p.setContent(card("Optimizacija prijevoza radnih strojeva", [
     "Raspored <b>10 transportnih naloga</b> na <b>2 kamiona</b> uz minimalnu kilometražu.",
     "Nosivost i broj strojeva u svakom trenutku · preuzimanje prije isporuke istim kamionom · povratak u bazu · <b>9 h rada</b> · 20 min po utovaru/istovaru · 60 km/h",
-  ], `<span class="chip">Python · egzaktni DP</span><span class="chip">FastAPI</span><span class="chip">React + TypeScript</span><span class="chip">31 test · OR-Tools potvrda</span>`));
+  ], `<span class="chip">Python · egzaktni DP</span><span class="chip">FastAPI</span><span class="chip">React + TypeScript</span><span class="chip">32 testa · OR-Tools potvrda</span>`));
   await wait(6000);
 
   await p.goto(URL);
@@ -180,11 +181,12 @@ const srtTime = (ms) => {
   await point(kpi(3), "Kamion B", "Pokazujem <b>Kamion B</b>: 162,9 km i 8:43 h rada",
     "Traka ispod je iskorištenost dnevnog limita: <b>97 % od 9 h</b>");
   // 6–8 zamka
-  await point(p.getByText("Zašto ne"), "zamka zadatka", "Pokazujem okvir <b>„Zašto ne 182,2 km?”</b>",
+  const insight = p.getByRole("button", { name: /Zašto ne/ });
+  await click(insight, "Objasni", "Otvaram traku <b>„Zašto ne 182,2 km?”</b>",
     "Najkraći raspored (sve vozi Kamion B) traje <b>9:42 h</b> – preko limita od 9 h");
   await point(p.getByText("Radno vrijeme bez limita"), "usporedba vremena", "Pokazujem usporedbu radnog vremena",
     "20 utovara/istovara × 20 min = <b>6 h 40 min</b>, plus 3 h 2 min vožnje = 9:42 h");
-  await point(p.getByText("N03", { exact: true }), "N03 → Kamion A", "Pokazujem premješteni nalog <b>N03</b>",
+  await point(insight.locator("xpath=..").locator("span.inline-flex", { hasText: "N03" }), "N03 → Kamion A", "Pokazujem premješteni nalog <b>N03</b>",
     "Optimizator ga daje Kamionu A: <b>+17,9 km</b>, ali oba vozača završe unutar 9 h");
   // 9–11 radni dan
   await scrollInto(p.getByText("Radni dan"), 110);
@@ -194,16 +196,23 @@ const srtTime = (ms) => {
     "Prelazim mišem preko <b>segmenta utovara</b>", "Opis pokazuje stroj, nalog, lokaciju i vrijeme – svaka radnja traje <b>20 min</b>");
   await point(p.getByText("limit 9 h"), "crta limita", "Pokazujem <b>crvenu crtu limita od 9 h</b>",
     "Kamion B završava u <b>8:43</b>, Kamion A već u 1:17 – oba unutar limita");
-  // 12–14 kamion B
-  await scrollInto(p.getByRole("heading", { name: "Kamion B" }), 100);
-  await point(p.getByText("vrh tereta 9.900 kg"), "vrh tereta", "Pokazujem karticu <b>Kamiona B</b>",
+  // 12–16 usporedba kamiona i kamion B
+  await scrollInto(p.getByText("Usporedba kamiona", { exact: true }), 100);
+  await point(p.getByText("Usporedba kamiona", { exact: true }), "usporedba kamiona",
+    "Pokazujem <b>usporedbu kamiona</b> jedan uz drugoga",
+    "Ista mjera u istom retku: <b>37,2 prema 162,9 km</b>, radno vrijeme <b>14 % prema 97 %</b> limita");
+  await point(p.locator("td").filter({ hasText: "9.900 kg" }), "vrh tereta", "Pokazujem <b>vrh tereta Kamiona B</b>",
     "Najveći teret je <b>9.900 / 10.000 kg</b> (M09 + M04) – nosivost nikad nije prekoračena");
+  const cardB = p.locator("h3", { hasText: "Kamion B" }).locator("xpath=ancestor::div[contains(@class,'overflow-hidden')][1]");
+  await scrollInto(cardB, 100);
   await point(p.locator('svg[aria-label^="Teret kamiona Kamion B"]'), "graf tereta",
     "Pokazujem <b>graf tereta</b> nakon svake radnje",
     "Isprekidana crta je nosivost; stroj M10 (9.400 kg) uvijek putuje sam");
-  await scrollInto(p.getByRole("row").filter({ hasText: "N10" }), 420);
-  await point(p.getByRole("row").filter({ hasText: "N10" }), "tablica radnji", "Pokazujem <b>tablicu radnji</b>",
-    "Za svaki korak: lokacija, radnja, nalog, stroj, km, <b>teret i broj strojeva nakon radnje</b>, vrijeme");
+  await click(cardB.getByRole("button", { name: /Prikaži radnje/ }), "Prikaži radnje", "Klikam <b>„Prikaži radnje”</b>",
+    "Tablica radnji otvara se na klik, da se kamioni mogu usporediti jedan uz drugoga");
+  await scrollInto(cardB.getByRole("row").filter({ hasText: "N10" }), 420);
+  await point(cardB.getByRole("row").filter({ hasText: "N10" }), "tablica radnji", "Pokazujem <b>tablicu radnji</b>",
+    "Za svaki korak: lokacija, radnja, nalog, km, <b>teret i broj strojeva nakon radnje</b>, vrijeme");
   // 15–18 karta
   await top();
   await click(p.getByRole("tab", { name: /Karta/ }), "Karta", "Klikam karticu <b>„Karta”</b>",
@@ -231,7 +240,7 @@ const srtTime = (ms) => {
   await type(hours, "4", "4 h", "Upisujem radno vrijeme vozača: <b>4 h</b>",
     "Strože ograničenje – sve naloge više nije moguće stići u jednom danu", { fill: true });
   await point(p.getByText(/nije moguće izvršiti/), "upozorenje", "Pokazujem <b>upozorenje o neizvršivim nalozima</b>",
-    "Izvršeno 7/10; <b>N06, N08 i N10</b> označeni su s razlogom (nema dovoljno radnog vremena)");
+    "Izvršeno 7/10; za <b>N06, N08 i N10</b> razlog po kamionu: A – stroj pretežak, B – radio bi preko 5 h");
   await point(kpi(0), "171,6 km", "Pokazujem novu kilometražu: <b>171,6 km</b>",
     "Prioritet je <b>najviše izvršenih naloga</b>, a zatim najmanja kilometraža");
   await type(hours, "9", "9 h", "Vraćam radno vrijeme na <b>9 h</b>",
@@ -264,7 +273,7 @@ const srtTime = (ms) => {
 
   await p.setContent(card("200,1 km · 10/10 naloga · unutar 9 h", [
     "<b>Egzaktni algoritam</b> (dinamičko programiranje + optimalna podjela) – rezultat potvrđen Google OR-Toolsom i brute-forceom.",
-    "<b>31 automatski test</b> poslovnih ograničenja i API-ja · nezavisni validator svakog rasporeda.",
+    "<b>32 automatska testa</b> poslovnih ograničenja i API-ja · nezavisni validator svakog rasporeda.",
   ], `pip install -r requirements.txt · cd frontend && npm install && npm run build · uvicorn api.main:app`));
   await wait(6000);
 

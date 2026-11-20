@@ -16,7 +16,7 @@ utovara/istovara, ukupno **9 h 42 min**, što je preko dnevnog limita od 9 h. Op
 nalog **N03 (L9 → L4) daje kamionu A** (+17,9 km), pa oba vozača završavaju na vrijeme
 (1 h 17 min i 8 h 43 min). Pretpostavka da utovar/istovar ulazi u 9 h izložena je kao prekidač
 u aplikaciji. Ako se računa samo vožnja, dopušteno je 182,2 km (vidi [Ključni uvid](#ključni-uvid)).
-Aplikacija to objašnjenje prikazuje i na kartici Raspored.
+Aplikacija to objašnjava u traci **„Zašto ne 182,2 km?”** na vrhu stranice.
 
 Manje zamke:
 - kamion A ne smije voziti M06–M10 (> 3.500 kg), a M01 + M05 = 3.900 kg ne stane ni u 2 mjesta;
@@ -49,6 +49,8 @@ Potrebno: **Python 3.10+** i **Node.js 20+**.
 ```bash
 git clone https://github.com/iburic55/uprent-transport-optimizer.git
 cd uprent-transport-optimizer
+python -m venv .venv          # preporučeno: zasebno okruženje
+.venv\Scripts\activate        # Windows (Linux/macOS: source .venv/bin/activate)
 pip install -r requirements.txt
 
 # React sučelje (jednom): izgradnja frontenda
@@ -74,7 +76,7 @@ python tools/verify_ortools.py
 
 ## 2. Funkcionalna demonstracija
 
-🎬 **Video demonstracija (4:45, bez zvuka):** [`docs/demo.mp4`](docs/demo.mp4). Svaki od 33
+🎬 **Video demonstracija (5:53, bez zvuka):** [`docs/demo.mp4`](docs/demo.mp4). Svaki od 35
 koraka (klik, unos, pokazivanje) ima titl na hrvatskom: **što se radi** i **zašto / što se vidi**,
 uz oznaku radnje kraj kursora i brojač koraka. Titlovi su i zasebno u [`docs/demo.srt`](docs/demo.srt)
 te kao isključiva titlovna traka u MP4. Video je snimljen automatski skriptom
@@ -112,13 +114,13 @@ Streamlit verzija (`streamlit run app.py`) ima iste funkcije; njezine snimke su 
 | Nosivost i broj strojeva u svakom trenutku | Ugrađeno u algoritam; nedopuštena stanja se ni ne generiraju |
 | Preuzimanje prije isporuke, isti kamion | Ugrađeno u model stanja (čeka → na kamionu → isporučen) |
 | Minimalna kilometraža | Egzaktna optimizacija |
-| Kilometraža po kamionu i ukupno | Metrike na vrhu kartice Raspored |
+| Kilometraža po kamionu i ukupno | Kartice na vrhu stranice i tablica **Usporedba kamiona** |
 | Upozorenje za neizvršive naloge | Crveni okvir s popisom naloga i razlogom po kamionu (npr. „Kamion A: stroj je pretežak; Kamion B: radio bi 5 h 15 min”) |
 | Neispravni ulazni podaci | Provjera prije izračuna (`check_inputs`): duple oznake, težina/nosivost ≤ 0, ista lokacija preuzimanja i isporuke, nedostaje baza – jasna poruka umjesto pada aplikacije |
 | Radnje i opterećenje nakon svake radnje | Tablica po kamionu: lokacija, radnja, nalog, stroj, km, teret, broj strojeva, vrijeme |
 | Broj izvršenih naloga | Metrike i naslov svakog kamiona |
 | Karta (opcionalno) | Kartica **Karta**: rute s označenim smjerom |
-| Dodatno | Kartica **Usporedba scenarija**; nezavisna provjera plana (zeleni/crveni status) |
+| Dodatno | Kartica **Scenariji** (usporedba tumačenja limita); nezavisna provjera plana (zeleni/crveni status) |
 
 U bočnoj traci mogu se mijenjati radno vrijeme, trajanje utovara/istovara, brzina i
 tumačenje dnevnog limita.
@@ -198,7 +200,8 @@ Među ostalim:
 - svaki stroj preuzima i isporučuje isti kamion, i to preuzimanje dolazi prvo;
 - obje rute počinju i završavaju u bazi, prazne;
 - radno vrijeme ≤ 9 h; uz kraći limit neizvršivi nalozi se jasno označe s razlogom
-  (uz 4 h točno N06, N08 i N10, kao u demonstraciji);
+  (uz 4 h točno N06, N08 i N10, kao u demonstraciji), i to po kamionu: Kamion A – stroj
+  pretežak, Kamion B – uz svoje naloge radio bi preko 4 h;
 - preteški stroj (12 t) odbija se s razlogom, a ostali nalozi se i dalje izvrše;
 - **validator stvarno hvata greške** (namjerno pokvaren plan: prekoračena nosivost,
   isporuka prije preuzimanja, krivo prikazan teret u tablici);
@@ -282,6 +285,12 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
    Sučelje sam provjerio u pregledniku (Playwright): dvije uzastopne izmjene nosivosti
    (185,8 → 187,5 km, isto kao Python), negativna koordinata, dupli nalog, limit od 4 h,
    tamna tema i mobilni prikaz bez vodoravnog pomicanja.
+10. **Završna provjera u pregledniku.** Automatski test sučelja (Playwright) pronašao je bug koji
+    unit testovi ne vide: u polju za radno vrijeme brisanje „9” i upis „4” ostavljali su 9 h.
+    Polje sada drži vlastiti tekst, prihvaća decimalni zarez i ograničava vrijednost na raspon.
+    Razlog neizvršivog naloga sada je napisan po kamionu, a natpis prekidača za utovar/istovar
+    jasno kaže što se broji u 9 h. Na kraju je sve provjereno na čistom klonu repozitorija
+    (instalacija, 32 testa, izgradnja frontenda, 200,1 km).
 
 ## 7. Procjena utrošenog vremena
 
