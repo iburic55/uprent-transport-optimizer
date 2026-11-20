@@ -74,6 +74,9 @@ python tools/verify_ortools.py
 
 ## 2. Funkcionalna demonstracija
 
+🎬 **Video demonstracija (2:17, bez zvuka, s titlovima):** [`docs/demo.mp4`](docs/demo.mp4)
+– snimljen automatski skriptom `tools/record_demo.js` (Playwright), pa se može ponovno snimiti.
+
 Nakon `uvicorn api.main:app` aplikacija se otvara na http://localhost:8000. Za demonstraciju
 predlažem ovaj redoslijed (oko 3 minute):
 
@@ -220,6 +223,7 @@ optimizer/__main__.py     ispis u terminalu
 tests/test_constraints.py testovi poslovnih ograničenja
 tests/test_api.py         testovi REST API-ja
 tools/verify_ortools.py   neovisna usporedba s Google OR-Toolsom
+tools/record_demo.js      automatsko snimanje demonstracijskog videa (Playwright)
 ```
 
 **Tehnologije**
