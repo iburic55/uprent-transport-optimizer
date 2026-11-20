@@ -1,5 +1,6 @@
-import { ArrowRight, Lightbulb } from "lucide-react";
+import { ArrowRight, ChevronDown, Lightbulb } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 import { hhmm, km } from "../lib/format";
 import type { Insight } from "../lib/types";
 import { Card } from "./ui";
@@ -19,14 +20,44 @@ function Bar({ label, value, max, text, tone }: { label: string; value: number; 
   );
 }
 
-/** „Zamka” zadatka: zašto raspored nije teoretski najkraći. */
+const OPEN_KEY = "insight-open";
+
+function readOpen(): boolean {
+  try { return localStorage.getItem(OPEN_KEY) === "1"; } catch { return false; }
+}
+
+/**
+ * „Zamka” zadatka: zašto raspored nije teoretski najkraći. Zadano je sažeto u jedan redak;
+ * „Objasni” otvara puno objašnjenje (stanje se pamti u pregledniku).
+ */
 export function InsightCard({ insight }: { insight: Insight }) {
+  const [open, setOpen] = useState(readOpen);
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    try { localStorage.setItem(OPEN_KEY, next ? "1" : "0"); } catch { /* privatni način */ }
+  };
   const limitMin = insight.limit_h * 60;
   const maxMin = Math.max(limitMin, insight.longest_min) * 1.05;
   const maxKm = insight.plan_km * 1.05;
+  const moved = insight.moved.map((m) => `${m.order} → ${m.truck}`).join(", ");
   return (
     <Card className="overflow-hidden border-amber-200 bg-gradient-to-br from-amber-50 via-white to-white dark:border-amber-500/30 dark:from-amber-500/10 dark:via-slate-900/60 dark:to-slate-900/60">
-      <div className="grid gap-6 p-5 lg:grid-cols-[1.3fr_1fr]">
+      <button type="button" onClick={toggle} aria-expanded={open}
+        className="flex w-full items-center gap-3 px-5 py-3 text-left hover:bg-amber-50/60 dark:hover:bg-amber-500/5">
+        <Lightbulb className="size-4 shrink-0 text-amber-600 dark:text-amber-300" />
+        <span className="min-w-0 flex-1 text-sm">
+          <b className="font-semibold">Zašto ne {km(insight.free_km)}?</b>{" "}
+          <span className="text-slate-600 dark:text-slate-300">
+            Limit od {insight.limit_h} h košta <b>+{km(insight.delta_km)}</b>{moved && <> ({moved})</>}.
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-amber-700 dark:text-amber-300">
+          {open ? "Sakrij" : "Objasni"}
+          <ChevronDown className={`size-4 transition-transform ${open ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {open && <div className="grid gap-6 border-t border-amber-200/70 p-5 lg:grid-cols-[1.3fr_1fr] dark:border-amber-500/20">
         <div className="flex gap-4">
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
             <Lightbulb className="size-5" />
@@ -54,7 +85,7 @@ export function InsightCard({ insight }: { insight: Insight }) {
           <Bar label="Teoretski minimum" value={insight.free_km} max={maxKm} text={km(insight.free_km)} tone="bg-slate-400" />
           <Bar label="Odabrani raspored (unutar limita)" value={insight.plan_km} max={maxKm} text={km(insight.plan_km)} tone="bg-emerald-500" />
         </div>
-      </div>
+      </div>}
     </Card>
   );
 }
