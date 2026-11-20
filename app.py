@@ -183,6 +183,32 @@ def run(trucks, locations, orders, s):
                     settings=s)
 
 
+def time_limit_note(p) -> str | None:
+    """Zamka zadatka: raspored s najmanje km bez vremenskog limita može prekoračiti radno vrijeme.
+
+    Vraća objašnjenje ako je raspored zbog limita dulji od teoretskog minimuma (uz isti broj
+    izvršenih naloga), inače None.
+    """
+    s = p.settings
+    free = run(tuple(trucks), tuple(locations), tuple(orders),
+               Settings(max_hours=UNLIMITED_H, handling_min=s.handling_min,
+                        speed_kmh=s.speed_kmh, handling_counts=False))
+    if not (free.total_km < p.total_km and free.orders_done == p.orders_done):
+        return None
+    used = (lambda t: t.total_min) if s.handling_counts else (lambda t: t.drive_min)
+    longest = max(free.trucks, key=used)
+    what = "vožnja + utovar/istovar" if s.handling_counts else "vožnja"
+    owner = {c: tp.truck.name for tp in p.trucks for c in tp.orders_done}
+    moved = sorted(c for tp in free.trucks for c in tp.orders_done if owner.get(c) != tp.truck.name)
+    moved_txt = ", ".join(f"{c} → {owner[c]}" for c in moved)
+    return (f"**Zašto ne {free.total_km:.1f} km?** Najkraći raspored bez vremenskog ograničenja "
+            f"ima {free.total_km:.1f} km, ali tada {longest.truck.name} radi "
+            f"**{hhmm(used(longest))} h** ({what}), a dopušteno je {s.max_hours:g} h. "
+            f"Optimizator zato premješta naloge ({moved_txt}): "
+            f"{p.total_km:.1f} km (+{p.total_km - free.total_km:.1f} km), a svi vozači "
+            f"završavaju unutar radnog vremena.")
+
+
 trucks, locations, orders, problems = build_model()
 plan = None
 if problems:
@@ -205,6 +231,9 @@ with tab_out:
                             f"{nalog(len(tp.orders_done))} · {hhmm(tp.total_min)} h",
                             delta_color="off", delta_arrow="off")
 
+        note = time_limit_note(plan)
+        if note:
+            st.info("⚠️ " + note)
         if not plan.optimal:
             st.warning("Heuristički raspored – nije dokazano optimalan. Neki kamion ima više od "
                        "12 mogućih naloga, što je previše za egzaktni algoritam; korišteno je "
@@ -312,12 +341,6 @@ with tab_cmp:
                                       f"{hhmm(tp.total_min)} h")
             rows.append(row)
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-        strict, free = results[0], results[2]
-        if free.total_km < strict.total_km and free.orders_done == strict.orders_done:
-            longest = max(free.trucks, key=lambda t: t.total_min)
-            st.info(
-                f"Teoretski minimum je {free.total_km:.1f} km, ali tada {longest.truck.name} "
-                f"radi {hhmm(longest.total_min)} h (vožnja + utovar/istovar). Uz ograničenje od "
-                f"{max_hours:g} h rada optimizator dio naloga prebacuje na drugi kamion: "
-                f"{strict.total_km:.1f} km (+{strict.total_km - free.total_km:.1f} km), "
-                f"a svi vozači završavaju unutar radnog vremena.")
+        note = time_limit_note(results[0])
+        if note:
+            st.info(note)

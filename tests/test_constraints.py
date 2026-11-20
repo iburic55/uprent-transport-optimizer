@@ -98,6 +98,15 @@ def test_bez_limita_optimum_je_jedan_kamion_ali_prelazi_9h():
     assert max(t.total_min for t in free.trucks) > 9 * 60
 
 
+def test_zamka_n03_prelazi_na_kamion_a_uz_17_9_km_vise(plan):
+    """Tvrdnja iz README-a i aplikacije: limit od 9 h košta točno 17,9 km i prebacuje N03."""
+    truck_a = next(t for t in plan.trucks if t.truck.name == "Kamion A")
+    assert truck_a.orders_done == ["N03"]
+    free = optimize(settings=Settings(max_hours=10_000, handling_counts=False))
+    assert plan.total_km - free.total_km == pytest.approx(17.9)
+    assert all(t.total_min <= 9 * 60 for t in plan.trucks)
+
+
 def test_samo_voznja_u_limitu_daje_182_km():
     p = optimize(settings=Settings(handling_counts=False))
     assert validate_plan(p, ORDERS, LOCATIONS) == []

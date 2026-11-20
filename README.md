@@ -8,6 +8,24 @@ nosivosti, broja strojeva, dnevnog radnog vremena i obaveznog povratka u bazu.
 Kamion B 162,9 km), oba vozača unutar 9 h. Rješenje je **dokazano optimalno**
 (egzaktni algoritam, neovisno potvrđeno OR-Toolsom i brute-force testom).
 
+### ⚠️ Zamka u zadatku
+
+Najkraći mogući raspored ima **182,2 km**: sve naloge vozi kamion B, a kamion A ostaje u bazi.
+Vožnja tada traje samo 3 h 2 min, ali 10 naloga znači 20 radnji × 20 min = 6 h 40 min
+utovara/istovara, ukupno **9 h 42 min**, što je preko dnevnog limita od 9 h. Optimizator zato
+nalog **N03 (L9 → L4) daje kamionu A** (+17,9 km), pa oba vozača završavaju na vrijeme
+(1 h 17 min i 8 h 43 min). Pretpostavka da utovar/istovar ulazi u 9 h izložena je kao prekidač
+u aplikaciji. Ako se računa samo vožnja, dopušteno je 182,2 km (vidi [Ključni uvid](#ključni-uvid)).
+Aplikacija to objašnjenje prikazuje i na kartici Raspored.
+
+Manje zamke:
+- kamion A ne smije voziti M06–M10 (> 3.500 kg), a M01 + M05 = 3.900 kg ne stane ni u 2 mjesta;
+- M10 (9.400 kg) uvijek putuje sam;
+- baza je i lokacija naloga (N05 se preuzima u L0, N04 isporučuje u L0);
+- udaljenost se zaokružuje po dionici, ne tek ukupni zbroj;
+- uz zadane podatke **nijedan nalog nije neizvršiv**; upozorenje se vidi tek uz strože uvjete
+  (npr. limit od 4 h → N06, N08, N10).
+
 ![Raspored](docs/raspored.png)
 
 ## Sadržaj predaje
