@@ -85,8 +85,10 @@ predlažem ovaj redoslijed (oko 3 minute):
 
 1. **Vrh stranice:** ukupno 200,1 km, 10/10 naloga, oznake „Dokazani optimum” i „Ograničenja
    zadovoljena”, te okvir **„Zašto ne 182,2 km?”** (zamka s 9 h).
-2. **Raspored:** vremenska crta radnog dana s crtom limita od 9 h; za svaki kamion redoslijed
-   lokacija, graf tereta i tablica radnji (teret i broj strojeva nakon svake radnje, vrijeme).
+2. **Raspored:** vremenska crta radnog dana s crtom limita od 9 h i **usporedba kamiona** jedan uz
+   drugoga (km, nalozi, radno vrijeme prema limitu, vrh tereta prema nosivosti, ruta), ispod
+   koje su grafovi tereta i tablice radnji na klik. Prekidač „Detaljno” prikazuje svaki kamion
+   u punoj širini (teret i broj strojeva nakon svake radnje, vrijeme).
 3. **Karta:** gumb „Pokreni vožnju” animira oba kamiona po stvarnoj vremenskoj crti, uz trenutnu
    radnju i teret.
 4. **Scenariji:** usporedba tumačenja limita (200,1 / 182,2 / 182,2 km).
@@ -106,7 +108,7 @@ Streamlit verzija (`streamlit run app.py`) ima iste funkcije; njezine snimke su 
 |---|---|
 | Prikaz i pregled ulaznih podataka | Kartica **Ulazni podaci**: vozni park, strojevi, lokacije, nalozi. Tablice se mogu uređivati, a raspored se odmah ponovno izračunava. |
 | Automatska dodjela naloga kamionima | Optimizator bira najbolju podjelu (sve kombinacije) |
-| Redoslijed obilaska | Kartica **Raspored**: redoslijed lokacija + tablica radnji |
+| Redoslijed obilaska | Kartica **Raspored**: usporedba kamiona (ruta), graf tereta + tablica radnji |
 | Nosivost i broj strojeva u svakom trenutku | Ugrađeno u algoritam; nedopuštena stanja se ni ne generiraju |
 | Preuzimanje prije isporuke, isti kamion | Ugrađeno u model stanja (čeka → na kamionu → isporučen) |
 | Minimalna kilometraža | Egzaktna optimizacija |
