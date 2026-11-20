@@ -16,6 +16,16 @@ st.set_page_config(page_title="UP Rent – optimizacija prijevoza", page_icon="�
 TRUCK_COLORS = ["#1f77b4", "#d62728", "#2ca02c", "#9467bd"]
 
 
+def nalog(n: int) -> str:
+    return f"{n} nalog" if n % 10 == 1 and n % 100 != 11 else f"{n} naloga"
+
+
+def route_text(steps) -> str:
+    """Redoslijed lokacija bez ponavljanja iste lokacije za redom."""
+    seq = [s.location for s in steps]
+    return " → ".join(c for i, c in enumerate(seq) if i == 0 or c != seq[i - 1])
+
+
 def hhmm(minutes: float) -> str:
     m = int(round(minutes))
     return f"{m // 60}:{m % 60:02d}"
@@ -150,7 +160,7 @@ with tab_out:
         m[1].metric("Izvršeni nalozi", f"{plan.orders_done} / {len(orders)}")
         for i, tp in enumerate(plan.trucks):
             m[2 + i].metric(tp.truck.name, f"{tp.km:.1f} km",
-                            f"{len(tp.orders_done)} naloga · {hhmm(tp.total_min)} h",
+                            f"{nalog(len(tp.orders_done))} · {hhmm(tp.total_min)} h",
                             delta_color="off", delta_arrow="off")
 
         if errors:
@@ -171,7 +181,7 @@ with tab_out:
         for i, tp in enumerate(plan.trucks):
             limit_used = tp.total_min if settings.handling_counts else tp.drive_min
             st.subheader(f"{tp.truck.name}  ·  {tp.km:.1f} km  ·  "
-                         f"{len(tp.orders_done)} naloga")
+                         f"{nalog(len(tp.orders_done))}")
             st.caption(f"Nosivost {tp.truck.capacity_kg:,} kg, max {tp.truck.max_machines} stroja · "
                        f"vožnja {hhmm(tp.drive_min)} h + utovar/istovar {hhmm(tp.handling_min)} h "
                        f"= {hhmm(tp.total_min)} h · iskorištenost limita "
@@ -179,7 +189,7 @@ with tab_out:
             if not tp.actions:
                 st.info("Kamion nije potreban – ostaje u bazi.")
                 continue
-            st.markdown("**Redoslijed:** " + " → ".join(s.location for s in tp.steps))
+            st.markdown("**Redoslijed:** " + route_text(tp.steps))
             rows = []
             for s in tp.steps:
                 icon = {PICKUP: "⬆️", DELIVERY: "⬇️", START: "🏁", RETURN: "🏠"}[s.action]
@@ -255,7 +265,7 @@ with tab_cmp:
             row = {"Scenarij": name, "Ukupno km": p.total_km,
                    "Izvršeno naloga": p.orders_done}
             for tp in p.trucks:
-                row[tp.truck.name] = (f"{tp.km:.1f} km, {len(tp.orders_done)} nal., "
+                row[tp.truck.name] = (f"{tp.km:.1f} km, {nalog(len(tp.orders_done))}, "
                                       f"{hhmm(tp.total_min)} h")
             rows.append(row)
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
