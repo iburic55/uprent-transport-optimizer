@@ -27,7 +27,7 @@ def validate_plan(plan: Plan, orders: list[Order], locations: list[Location]) ->
         t = tp.truck
         here, km, load, onboard = s.base, 0.0, 0, set()
         picked: set[str] = set()
-        for code, act in tp.actions:
+        for k, (code, act) in enumerate(tp.actions, start=1):
             o = by_code[code]
             if act == PICKUP:
                 if code in picked:
@@ -51,6 +51,11 @@ def validate_plan(plan: Plan, orders: list[Order], locations: list[Location]) ->
                 continue
             km += _km(loc[here], loc[to])
             here = to
+            if k < len(tp.steps) and (tp.steps[k].load_kg != load
+                                      or tp.steps[k].machines_on_board != len(onboard)):
+                errors.append(f"{t.name}: prikazano opterećenje nakon radnje {k} "
+                              f"({tp.steps[k].load_kg} kg, {tp.steps[k].machines_on_board} str.) "
+                              f"≠ izračunato ({load} kg, {len(onboard)} str.).")
             if load > t.capacity_kg:
                 errors.append(f"{t.name}: prekoračena nosivost ({load} kg > {t.capacity_kg} kg) "
                               f"nakon radnje na {code}.")

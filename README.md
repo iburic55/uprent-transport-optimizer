@@ -18,7 +18,7 @@ Kamion B 162,9 km), oba vozača unutar 9 h. Rješenje je **dokazano optimalno**
 | Kratke upute za pokretanje | [1. Pokretanje](#1-pokretanje) |
 | Funkcionalna demonstracija | [2. Funkcionalna demonstracija](#2-funkcionalna-demonstracija) |
 | Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
-| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 16 testova u `tests/test_constraints.py` |
+| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 20 testova u `tests/test_constraints.py` |
 | Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
 | Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
 
@@ -26,7 +26,7 @@ Kamion B 162,9 km), oba vozača unutar 9 h. Rješenje je **dokazano optimalno**
 
 ## 1. Pokretanje
 
-Potrebno: Python 3.10+
+Potrebno: Python 3.10+ (Streamlit ≥ 1.52, instalira se iz `requirements.txt`)
 
 ```bash
 git clone https://github.com/iburic55/uprent-transport-optimizer.git
@@ -74,6 +74,7 @@ predlažem ovaj redoslijed (oko 3 minute):
 | Minimalna kilometraža | Egzaktna optimizacija |
 | Kilometraža po kamionu i ukupno | Metrike na vrhu kartice Raspored |
 | Upozorenje za neizvršive naloge | Crveni okvir s popisom naloga i razlogom (preteško / nema vremena) |
+| Neispravni ulazni podaci | Provjera prije izračuna (`check_inputs`): duple oznake, težina/nosivost ≤ 0, ista lokacija preuzimanja i isporuke, nedostaje baza – jasna poruka umjesto pada aplikacije |
 | Radnje i opterećenje nakon svake radnje | Tablica po kamionu: lokacija, radnja, nalog, stroj, km, teret, broj strojeva, vrijeme |
 | Broj izvršenih naloga | Metrike i naslov svakog kamiona |
 | Karta (opcionalno) | Kartica **Karta**: rute s označenim smjerom |
@@ -134,16 +135,19 @@ M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
 
 ## 4. Testovi
 
-`pytest -v` pokreće 16 testova u `tests/test_constraints.py`, među ostalim:
+`pytest -v` pokreće 20 testova u `tests/test_constraints.py`, među ostalim:
 
 - nosivost i broj strojeva nikad nisu prekoračeni ni nakon jedne radnje;
 - strojevi teži od 3.500 kg nikad ne idu kamionom A; M10 uvijek putuje sam;
 - svaki stroj preuzima i isporučuje isti kamion, i to preuzimanje dolazi prvo;
 - obje rute počinju i završavaju u bazi, prazne;
-- radno vrijeme ≤ 9 h; uz kraći limit (3 h) neizvršivi nalozi se jasno označe;
+- radno vrijeme ≤ 9 h; uz kraći limit neizvršivi nalozi se jasno označe s razlogom
+  (uz 4 h točno N06, N08 i N10, kao u demonstraciji);
 - preteški stroj (12 t) odbija se s razlogom, a ostali nalozi se i dalje izvrše;
 - **validator stvarno hvata greške** (namjerno pokvaren plan: prekoračena nosivost,
-  isporuka prije preuzimanja);
+  isporuka prije preuzimanja, krivo prikazan teret u tablici);
+- neispravni ulazni podaci (dupla oznaka naloga, težina 0, ista lokacija preuzimanja i
+  isporuke, kamion bez nosivosti, nedostaje baza) odbijaju se jasnom porukom;
 - **optimalnost:** rezultat DP-a jednak je brute-forceu (sve permutacije radnji) na manjim
   primjerima.
 
@@ -155,7 +159,7 @@ aplikacija za zeleni/crveni status.
 
 ```
 app.py                    Streamlit web sučelje
-optimizer/data.py         ulazni podaci zadatka
+optimizer/data.py         ulazni podaci zadatka i provjera ulaza
 optimizer/solver.py       optimizacijski algoritam
 optimizer/validate.py     nezavisna provjera ograničenja
 optimizer/__main__.py     ispis u terminalu
@@ -186,6 +190,10 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
    stvarno na kamionu.
 6. **Tumačenje zadatka.** Nejasnoću oko toga ulazi li utovar/istovar u 9 h nisam prepustio
    AI-ju da prešutno odluči; izložena je kao pretpostavka i prekidač u aplikaciji.
+7. **Završni pregled.** Prije predaje ponovno sam pokrenuo sve provjere (OR-Tools, scenarij
+   od 4 h, ručni izračun) i aplikaciju u pregledniku. Pritom sam našao i ispravio: test
+   neizvršivih naloga koji bi prošao gotovo s bilo kojim tekstom, nedostajuću provjeru
+   ulaznih podataka (dupli nalog tiho bi pregazio drugi) i preniski minimum verzije Streamlita.
 
 ## 7. Procjena utrošenog vremena
 
@@ -196,7 +204,8 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
 | Web sučelje | 1 h |
 | Testovi i neovisne provjere (OR-Tools, brute force, ručno) | 1 h |
 | Dokumentacija | 0,5 h |
-| **Ukupno** | **~4 h** |
+| Završni pregled (provjera svih brojki, validacija ulaza, dodatni testovi) | 0,5 h |
+| **Ukupno** | **~4,5 h** |
 
 ## 8. Ograničenja i mogući nastavak
 

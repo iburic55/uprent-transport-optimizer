@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from optimizer import LOCATIONS, MACHINES, ORDERS, TRUCKS, Location, Order, Settings, Truck, optimize, validate_plan
+from optimizer import LOCATIONS, MACHINES, ORDERS, TRUCKS, Location, Order, Settings, Truck, check_inputs, optimize, validate_plan
 from optimizer.solver import DELIVERY, PICKUP, RETURN, START
 
 st.set_page_config(page_title="UP Rent – optimizacija prijevoza", page_icon="🚚", layout="wide")
@@ -113,13 +113,21 @@ with tab_in:
 # ------------------------------------------------------------------ pretvorba u model
 def build_model():
     d = st.session_state.data
-    trucks = [Truck(str(r["Vozilo"]), int(r["Nosivost (kg)"]), int(r["Max strojeva"]))
-              for _, r in d["trucks"].dropna().iterrows()]
-    weights = {str(r["Stroj"]): int(r["Težina (kg)"]) for _, r in d["machines"].dropna().iterrows()}
-    locations = [Location(str(r["Lokacija"]), float(r["X (km)"]), float(r["Y (km)"]),
-                          str(r["Naziv"] or "")) for _, r in
-                 d["locations"].dropna(subset=["Lokacija", "X (km)", "Y (km)"]).iterrows()]
-    orders, problems = [], []
+    problems: list[str] = []
+    try:
+        trucks = [Truck(str(r["Vozilo"]), int(r["Nosivost (kg)"]), int(r["Max strojeva"]))
+                  for _, r in d["trucks"].dropna().iterrows()]
+        machines = [str(m) for m in d["machines"].dropna()["Stroj"]]
+        for m in sorted({m for m in machines if machines.count(m) > 1}):
+            problems.append(f"Oznaka stroja „{m}” pojavljuje se više puta.")
+        weights = {str(r["Stroj"]): int(r["Težina (kg)"])
+                   for _, r in d["machines"].dropna().iterrows()}
+        locations = [Location(str(r["Lokacija"]), float(r["X (km)"]), float(r["Y (km)"]),
+                              "" if pd.isna(r["Naziv"]) else str(r["Naziv"])) for _, r in
+                     d["locations"].dropna(subset=["Lokacija", "X (km)", "Y (km)"]).iterrows()]
+    except (TypeError, ValueError) as e:
+        return [], [], [], [f"Neispravna vrijednost u ulaznim tablicama: {e}"]
+    orders = []
     for _, r in d["orders"].dropna(subset=["Nalog"]).iterrows():
         m = str(r["Stroj"])
         if m not in weights:
@@ -127,8 +135,7 @@ def build_model():
             continue
         orders.append(Order(str(r["Nalog"]), m, weights[m], str(r["Preuzimanje"]),
                             str(r["Isporuka"])))
-    if settings.base not in {l.code for l in locations}:
-        problems.append("Lokacija baze L0 mora postojati.")
+    problems += check_inputs(trucks, locations, orders, settings.base)
     return trucks, locations, orders, problems
 
 
@@ -171,12 +178,9 @@ with tab_out:
                        "radno vrijeme).")
 
         if plan.unassigned:
-            st.error(f"⚠️ {len(plan.unassigned)} nalog(a) NIJE moguće izvršiti:")
-            st.dataframe(pd.DataFrame([{"Nalog": o.code, "Stroj": o.machine,
-                                        "Težina (kg)": o.weight_kg,
-                                        "Relacija": f"{o.pickup} → {o.delivery}",
-                                        "Razlog": r} for o, r in plan.unassigned]),
-                         hide_index=True, width="stretch")
+            st.error(f"⚠️ {nalog(len(plan.unassigned))} NIJE moguće izvršiti:")
+            for o, r in plan.unassigned:
+                st.markdown(f"- **{o.code}** – {o.machine} ({o.weight_kg:,} kg), {o.pickup} → {o.delivery}: {r}")
 
         for i, tp in enumerate(plan.trucks):
             limit_used = tp.total_min if settings.handling_counts else tp.drive_min

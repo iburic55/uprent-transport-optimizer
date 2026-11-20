@@ -84,3 +84,40 @@ _ORDERS_RAW = [
 ]
 
 ORDERS = [Order(c, m, MACHINES[m], p, d) for c, m, p, d in _ORDERS_RAW]
+
+
+def check_inputs(
+    trucks: list[Truck],
+    locations: list[Location],
+    orders: list[Order],
+    base: str = "L0",
+) -> list[str]:
+    """Provjera ulaznih podataka prije optimizacije. Prazan popis = podaci su ispravni.
+
+    Nalozi s nepoznatom lokacijom ili preteškim strojem NISU greška ulaza – njih
+    optimizator označi kao neizvršive s razlogom.
+    """
+    problems: list[str] = []
+
+    def dupes(items: list[str]) -> list[str]:
+        return sorted({x for x in items if items.count(x) > 1})
+
+    for what, codes in (("vozila", [t.name for t in trucks]),
+                        ("lokacije", [l.code for l in locations]),
+                        ("naloga", [o.code for o in orders])):
+        for c in dupes(codes):
+            problems.append(f"Oznaka {what} „{c}” pojavljuje se više puta.")
+    if not trucks:
+        problems.append("Potrebno je barem jedno vozilo.")
+    for t in trucks:
+        if t.capacity_kg <= 0 or t.max_machines <= 0:
+            problems.append(f"{t.name}: nosivost i broj strojeva moraju biti veći od 0.")
+    if base not in {l.code for l in locations}:
+        problems.append(f"Lokacija baze {base} mora postojati.")
+    for o in orders:
+        if o.weight_kg <= 0:
+            problems.append(f"Nalog {o.code}: težina stroja {o.machine} mora biti veća od 0.")
+        if o.pickup == o.delivery:
+            problems.append(f"Nalog {o.code}: preuzimanje i isporuka su na istoj lokaciji "
+                            f"({o.pickup}).")
+    return problems

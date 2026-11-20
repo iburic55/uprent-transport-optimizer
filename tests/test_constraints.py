@@ -13,7 +13,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from optimizer import LOCATIONS, ORDERS, TRUCKS, Order, Settings, Truck, optimize, validate_plan  # noqa: E402
+from optimizer import (LOCATIONS, ORDERS, TRUCKS, Order, Settings, Truck, check_inputs,  # noqa: E402
+                       optimize, validate_plan)  # noqa: E402
 from optimizer.solver import DELIVERY, PICKUP, build_truck_plan, leg_km  # noqa: E402
 
 LOC = {l.code: l for l in LOCATIONS}
@@ -113,7 +114,15 @@ def test_kratko_radno_vrijeme_jasno_oznacava_neizvrsive_naloge():
     assert validate_plan(p, ORDERS, LOCATIONS) == []
     assert 0 < p.orders_done < 10
     assert len(p.unassigned) == 10 - p.orders_done
-    assert all("vremena" in reason or "h" in reason for _, reason in p.unassigned)
+    assert all("radnog vremena" in reason and "3 h" in reason for _, reason in p.unassigned)
+
+
+def test_limit_4h_odbija_upravo_n06_n08_n10():
+    """Scenarij iz demonstracije: uz 4 h rada izvrši se 7 naloga."""
+    p = optimize(settings=Settings(max_hours=4))
+    assert validate_plan(p, ORDERS, LOCATIONS) == []
+    assert [o.code for o, _ in p.unassigned] == ["N06", "N08", "N10"]
+    assert all(t.total_min <= 4 * 60 for t in p.trucks)
 
 
 def test_pretezak_stroj_se_odbija_s_razlogom():
@@ -145,6 +154,33 @@ def test_validator_hvata_isporuku_prije_preuzimanja():
                              BY_CODE, LOC, good.settings)
     bad = replace(good, trucks=[bad_a, good.trucks[1]])
     assert any("prije preuzimanja" in e for e in validate_plan(bad, ORDERS, LOCATIONS))
+
+
+def test_validator_hvata_pogresno_prikazano_opterecenje():
+    """Tablica u aplikaciji prikazuje teret nakon svake radnje – i to se provjerava."""
+    good = optimize()
+    b = good.trucks[1]
+    steps = list(b.steps)
+    steps[3] = replace(steps[3], load_kg=steps[3].load_kg + 1_000)
+    bad = replace(good, trucks=[good.trucks[0], replace(b, steps=steps)])
+    assert any("prikazano opterećenje" in e for e in validate_plan(bad, ORDERS, LOCATIONS))
+
+
+# ----------------------------------------------------------------- ulazni podaci
+def test_zadani_ulazni_podaci_su_ispravni():
+    assert check_inputs(TRUCKS, LOCATIONS, ORDERS) == []
+
+
+def test_neispravni_ulazni_podaci_se_odbijaju():
+    orders = ORDERS + [Order("N01", "M01", 800, "L2", "L3"),      # dupli kod naloga
+                       Order("N12", "M01", 800, "L4", "L4"),      # ista lokacija
+                       Order("N13", "MX", 0, "L1", "L2")]         # težina 0
+    trucks = TRUCKS + [Truck("Kamion C", 0, 2)]
+    locations = [l for l in LOCATIONS if l.code != "L0"]
+    problems = " | ".join(check_inputs(trucks, locations, orders))
+    for expected in ("„N01” pojavljuje se više puta", "N12: preuzimanje i isporuka",
+                     "N13: težina", "Kamion C: nosivost", "baze L0"):
+        assert expected in problems, expected
 
 
 # ----------------------------------------------------------------- optimalnost
