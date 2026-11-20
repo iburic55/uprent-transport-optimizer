@@ -131,6 +131,18 @@ def test_limit_4h_odbija_upravo_n06_n08_n10():
     assert all(t.total_min <= 4 * 60 for t in p.trucks)
 
 
+def test_razlog_neizvrsivog_naloga_je_po_kamionu():
+    """Uz 4 h: kamion A ne može jer je stroj pretežak, kamion B jer bi radio predugo."""
+    p = optimize(settings=Settings(max_hours=4))
+    reasons = dict((o.code, r) for o, r in p.unassigned)
+    assert "Kamion A: stroj je pretežak (3.900 kg > 3.500 kg)" in reasons["N06"]
+    for r in reasons.values():
+        assert "limit 4 h" in r and "Kamion B: stroj stane, ali bi uz svoje naloge radio" in r
+        b_time = r.split("radio ")[1].rstrip(".")
+        hours, minutes = int(b_time.split(" h ")[0]), int(b_time.split(" h ")[1].split(" ")[0])
+        assert hours * 60 + minutes > 4 * 60
+
+
 def test_pretezak_stroj_se_odbija_s_razlogom():
     orders = ORDERS + [Order("N11", "M99", 12_000, "L1", "L2")]
     p = optimize(orders=orders)

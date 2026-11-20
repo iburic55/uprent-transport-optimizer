@@ -19,7 +19,7 @@ desetinkama kilometra (cijeli brojevi), pa nema grešaka zaokruživanja.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from .data import LOCATIONS, ORDERS, TRUCKS, Location, Order, Settings, Truck
 
@@ -262,20 +262,57 @@ def optimize(
     done = {c for tp in truck_plans for c in tp.orders_done}
 
     for o in candidates:
-        if o.code in done:
-            continue
-        if any(single_order_fits(t, o, loc, s) for t in trucks):
-            reason = ("Nalog je izvediv sam za sebe, ali uz ostale naloge nema dovoljno "
-                      "radnog vremena ni u jednom kamionu (ograničenje "
-                      f"{s.max_hours:g} h).")
-        else:
-            reason = (f"Ni jedan kamion ne može odraditi ovaj nalog unutar "
-                      f"{s.max_hours:g} h (vožnja baza → preuzimanje → isporuka → baza).")
-        unassigned.append((o, reason))
+        if o.code not in done:
+            unassigned.append((o, _time_reason(o, trucks, truck_plans, by_code, loc, s)))
 
     order_pos = {o.code: i for i, o in enumerate(orders)}
     unassigned.sort(key=lambda x: order_pos[x[0].code])
     return Plan(truck_plans, unassigned, s, optimal=optimal)
+
+
+def _hm(minutes: float) -> str:
+    m = round(minutes)
+    return f"{m // 60} h {m % 60:02d} min"
+
+
+def _kg(x: int) -> str:
+    return f"{x:,}".replace(",", ".")
+
+
+def _time_reason(o: Order, trucks: list[Truck], truck_plans: list[TruckPlan],
+                 by_code: dict[str, Order], loc: dict[str, Location], s: Settings) -> str:
+    """Razlog po kamionu za nalog koji nije stao u radno vrijeme.
+
+    Za kamion u koji stroj stane procijeni se koliko bi radio da se nalog najjeftinije umetne
+    u njegovu postojeću rutu (bez vremenskog limita). To je samo objašnjenje: raspored se ne
+    mijenja, a optimum je već utvrđen.
+    """
+    from .heuristic import _best_insertion
+
+    no_limit = replace(s, max_hours=math.inf)
+    limit = f"limit {s.max_hours:g} h"
+    parts = []
+    for t, tp in zip(trucks, truck_plans):
+        if o.weight_kg > t.capacity_kg:
+            parts.append(f"{t.name}: stroj je pretežak ({_kg(o.weight_kg)} kg > "
+                         f"{_kg(t.capacity_kg)} kg)")
+            continue
+        if t.max_machines < 1:
+            parts.append(f"{t.name}: ne može voziti strojeve")
+            continue
+        tenths, route = _best_insertion(t, tp.actions, o, by_code, loc, no_limit)
+        handling = len(route) * s.handling_min if s.handling_counts else 0.0
+        minutes = drive_minutes(tenths, s) + handling
+        if not tp.actions:
+            parts.append(f"{t.name}: ni sam ovaj nalog ne stane ({_hm(minutes)})")
+        else:
+            parts.append(f"{t.name}: stroj stane, ali bi uz svoje naloge radio {_hm(minutes)}")
+    if any(single_order_fits(t, o, loc, s) for t in trucks):
+        head = f"Uz ostale naloge nema dovoljno radnog vremena ni u jednom kamionu ({limit})."
+    else:
+        head = (f"Ni jedan kamion nema dovoljno radnog vremena za ovaj nalog ni kad vozi samo "
+                f"njega ({limit}).")
+    return f"{head} " + "; ".join(parts) + "."
 
 
 def single_order_fits(truck: Truck, o: Order, loc: dict[str, Location], s: Settings) -> bool:

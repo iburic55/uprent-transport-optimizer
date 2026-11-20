@@ -36,7 +36,7 @@ Manje zamke:
 | Kratke upute za pokretanje | [1. Pokretanje](#1-pokretanje) |
 | Funkcionalna demonstracija | [2. Funkcionalna demonstracija](#2-funkcionalna-demonstracija) |
 | Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
-| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 31 test (`tests/test_constraints.py`, `tests/test_api.py`) |
+| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 32 testa (`tests/test_constraints.py`, `tests/test_api.py`) |
 | Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
 | Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
 
@@ -111,7 +111,7 @@ Streamlit verzija (`streamlit run app.py`) ima iste funkcije; njezine snimke su 
 | Preuzimanje prije isporuke, isti kamion | Ugrađeno u model stanja (čeka → na kamionu → isporučen) |
 | Minimalna kilometraža | Egzaktna optimizacija |
 | Kilometraža po kamionu i ukupno | Metrike na vrhu kartice Raspored |
-| Upozorenje za neizvršive naloge | Crveni okvir s popisom naloga i razlogom (preteško / nema vremena) |
+| Upozorenje za neizvršive naloge | Crveni okvir s popisom naloga i razlogom po kamionu (npr. „Kamion A: stroj je pretežak; Kamion B: radio bi 5 h 15 min”) |
 | Neispravni ulazni podaci | Provjera prije izračuna (`check_inputs`): duple oznake, težina/nosivost ≤ 0, ista lokacija preuzimanja i isporuke, nedostaje baza – jasna poruka umjesto pada aplikacije |
 | Radnje i opterećenje nakon svake radnje | Tablica po kamionu: lokacija, radnja, nalog, stroj, km, teret, broj strojeva, vrijeme |
 | Broj izvršenih naloga | Metrike i naslov svakog kamiona |
@@ -151,7 +151,7 @@ isti kamioni s istim nalozima računaju se samo jednom):
 1. **najviše izvršenih naloga** (prioritet: ništa ne ostaje neisporučeno), zatim
 2. **najmanjom ukupnom kilometražom**.
 
-Nalozi koji ne stanu označe se kao neizvršivi, s razlogom.
+Nalozi koji ne stanu označe se kao neizvršivi, s razlogom za svaki kamion: stroj je pretežak ili bi kamion uz svoje naloge radio predugo (procjena najjeftinijim umetanjem u njegovu rutu).
 
 **Veći problemi – heuristika (`optimizer/heuristic.py`).** Ako neki kamion ima više od 12
 mogućih naloga (3^n stanja postaje presporo), aplikacija ne pada, nego koristi:
@@ -187,7 +187,7 @@ M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
 
 ## 4. Testovi
 
-`pytest -v` pokreće 31 test: 26 u `tests/test_constraints.py` i 5 u `tests/test_api.py`
+`pytest -v` pokreće 32 testa: 27 u `tests/test_constraints.py` i 5 u `tests/test_api.py`
 (optimum i zamka preko API-ja, vremenska crta, neispravan unos, limit od 4 h, validacija postavki).
 Među ostalim:
 
