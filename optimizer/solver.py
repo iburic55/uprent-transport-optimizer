@@ -10,13 +10,16 @@ Pristup
 2. Kombinacija kamiona: od svih parova disjunktnih podskupova koji stanu u radno vrijeme
    bira se onaj s najviše izvršenih naloga, a zatim s najmanjom ukupnom kilometražom.
 
+Ako neki kamion ima više od MAX_ORDERS_PER_TRUCK mogućih naloga, koristi se heuristika iz
+`heuristic.py` (Plan.optimal = False).
+
 Udaljenosti su euklidske, zaokružene na 0,1 km po dionici. Interno se računa u
 desetinkama kilometra (cijeli brojevi), pa nema grešaka zaokruživanja.
 """
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from .data import LOCATIONS, ORDERS, TRUCKS, Location, Order, Settings, Truck
 
@@ -34,10 +37,6 @@ def leg_tenths(a: Location, b: Location) -> int:
 
 def leg_km(a: Location, b: Location) -> float:
     return leg_tenths(a, b) / 10
-
-
-def distance_matrix(locations: list[Location]) -> dict[str, dict[str, float]]:
-    return {a.code: {b.code: leg_km(a, b) for b in locations} for a in locations}
 
 
 # --------------------------------------------------------------------------- rezultati
@@ -78,8 +77,7 @@ class Plan:
     trucks: list[TruckPlan]
     unassigned: list[tuple[Order, str]]
     settings: Settings
-    optimal: bool = True
-    notes: list[str] = field(default_factory=list)
+    optimal: bool = True    # False -> heuristički raspored (prevelik problem za egzaktni DP)
 
     @property
     def total_km(self) -> float:
@@ -122,7 +120,6 @@ def solve_single_truck(
             f"{truck.name}: {n} naloga je previše za egzaktni algoritam "
             f"(maksimalno {MAX_ORDERS_PER_TRUCK})."
         )
-    p3 = [3**i for i in range(n)]
     w = [o.weight_kg for o in orders]
     codes = list(loc)
     idx = {c: i for i, c in enumerate(codes)}
@@ -130,44 +127,60 @@ def solve_single_truck(
     pick = [idx[o.pickup] for o in orders]
     deli = [idx[o.delivery] for o in orders]
     base = idx[s.base]
+    cap, max_m = truck.capacity_kg, truck.max_machines
 
-    # levels[k] = {(stanje, lokacija): trošak}; svaki korak povećava zbroj znamenki za 1
-    parent: dict[tuple[int, int], tuple[tuple[int, int], int, int]] = {}
-    level: dict[tuple[int, int], int] = {(0, base): 0}
-    finals: dict[frozenset[str], tuple[int, tuple[int, int]]] = {}
+    load_of: dict[int, int] = {0: 0}   # teret za skup strojeva na kamionu (memoizacija)
 
-    for _ in range(2 * n + 1):
-        nxt: dict[tuple[int, int], int] = {}
+    def load(mask: int) -> int:
+        if mask not in load_of:
+            low = mask & -mask
+            load_of[mask] = load(mask ^ low) + w[low.bit_length() - 1]
+        return load_of[mask]
+
+    # Stanje = (na kamionu, isporučeno, lokacija) kao bitmaske; svaki korak dodaje jednu radnju,
+    # pa se stanja obrađuju po razinama. Za svako stanje pamti se najkraći put do njega.
+    State = tuple[int, int, int]
+    parent: dict[State, tuple[State, int, int]] = {}
+    level: dict[State, int] = {(0, 0, base): 0}
+    finals: dict[int, tuple[int, State]] = {}   # isporučeni skup -> (km, završno stanje)
+
+    # Rezanje: stanje se odbacuje čim prijeđeni km + sav utovar/istovar koji je već obavljen ili
+    # neizbježan (isporuka strojeva na kamionu) premašuje radno vrijeme. Povratak u bazu se
+    # namjerno ne procjenjuje (zaokruživanje dionica može narušiti nejednakost trokuta).
+    budget = s.max_hours * 60 + 1e-9
+    per_km = 60 / s.speed_kmh
+    hmin = s.handling_min if s.handling_counts else 0.0
+
+    for step in range(2 * n + 1):
+        nxt: dict[State, int] = {}
         for key, cost in level.items():
-            st, here = key
-            digits = [(st // p3[i]) % 3 for i in range(n)]
-            onboard = [i for i in range(n) if digits[i] == 1]
-            load = sum(w[i] for i in onboard)
-
-            if not onboard:  # kamion je prazan -> može se vratiti u bazu
-                done = frozenset(orders[i].code for i in range(n) if digits[i] == 2)
+            on, done, here = key
+            if not on:  # kamion je prazan -> može se vratiti u bazu
                 total = cost + dist[here][base]
                 if done not in finals or total < finals[done][0]:
                     finals[done] = (total, key)
-
+            free_load = cap - load(on)
+            room = on.bit_count() < max_m
+            row = dist[here]
             for i in range(n):
-                if digits[i] == 0:
-                    if load + w[i] > truck.capacity_kg or len(onboard) + 1 > truck.max_machines:
-                        continue
-                    to, kind = pick[i], 0
-                elif digits[i] == 1:
-                    to, kind = deli[i], 1
-                else:
+                bit = 1 << i
+                if on & bit:
+                    to, kind, nkey = deli[i], 1, (on ^ bit, done | bit, deli[i])
+                elif done & bit or not room or w[i] > free_load:
                     continue
-                nkey = (st + p3[i], to)
-                ncost = cost + dist[here][to]
-                if nkey not in nxt or ncost < nxt[nkey]:
+                else:
+                    to, kind, nkey = pick[i], 0, (on | bit, done, pick[i])
+                ncost = cost + row[to]
+                if ncost / 10 * per_km + (step + 1 + nkey[0].bit_count()) * hmin > budget:
+                    continue
+                if ncost < nxt.get(nkey, 1 << 60):
                     nxt[nkey] = ncost
                     parent[nkey] = (key, i, kind)
         level = nxt
 
     result = {}
-    for subset, (total, key) in finals.items():
+    for mask, (total, key) in finals.items():
+        subset = frozenset(orders[i].code for i in range(n) if mask >> i & 1)
         if not limit_ok(total, len(subset), s):
             continue
         actions = []
@@ -229,45 +242,29 @@ def optimize(
     for o in orders:
         if o.pickup not in loc or o.delivery not in loc:
             unassigned.append((o, "Nepoznata lokacija preuzimanja ili isporuke."))
+        elif not trucks:
+            unassigned.append((o, "Nema raspoloživih vozila."))
         elif not any(o.weight_kg <= t.capacity_kg and t.max_machines >= 1 for t in trucks):
             unassigned.append((o, f"Stroj {o.machine} ({o.weight_kg:,} kg) je preteži od "
                                   f"nosivosti svih kamiona."))
         else:
             candidates.append(o)
 
-    # opcije po kamionu: podskup -> (desetinke km, radnje)
-    options = []
-    for t in trucks:
-        eligible = [o for o in candidates if o.weight_kg <= t.capacity_kg]
-        options.append(solve_single_truck(t, eligible, loc, s))
+    eligible = [[o for o in candidates if o.weight_kg <= t.capacity_kg] for t in trucks]
+    optimal = all(len(e) <= MAX_ORDERS_PER_TRUCK for e in eligible)
+    if optimal:
+        routes = _exact_routes(trucks, eligible, candidates, loc, s)
+    else:
+        from .heuristic import insertion_routes
+        routes = insertion_routes(trucks, candidates, loc, s)
 
-    # kombiniranje: (broj naloga desc, km asc) preko disjunktnih podskupova
-    best: dict[frozenset[str], tuple[int, list[frozenset[str]]]] = {frozenset(): (0, [])}
-    for opt in options:
-        new: dict[frozenset[str], tuple[int, list[frozenset[str]]]] = {}
-        for used, (km, picks) in best.items():
-            for subset, (t_km, _) in opt.items():
-                if used & subset:
-                    continue
-                key = used | subset
-                total = km + t_km
-                if key not in new or total < new[key][0]:
-                    new[key] = (total, picks + [subset])
-        best = new
-
-    chosen_key = min(best, key=lambda k: (-len(k), best[k][0], sorted(k)))
-    _, picks = best[chosen_key]
-
-    truck_plans = [
-        build_truck_plan(t, options[i][picks[i]][1], by_code, loc, s)
-        for i, t in enumerate(trucks)
-    ]
+    truck_plans = [build_truck_plan(t, routes[i], by_code, loc, s) for i, t in enumerate(trucks)]
+    done = {c for tp in truck_plans for c in tp.orders_done}
 
     for o in candidates:
-        if o.code in chosen_key:
+        if o.code in done:
             continue
-        alone = any(frozenset([o.code]) in opt for opt in options)
-        if alone:
+        if any(single_order_fits(t, o, loc, s) for t in trucks):
             reason = ("Nalog je izvediv sam za sebe, ali uz ostale naloge nema dovoljno "
                       "radnog vremena ni u jednom kamionu (ograničenje "
                       f"{s.max_hours:g} h).")
@@ -278,4 +275,67 @@ def optimize(
 
     order_pos = {o.code: i for i, o in enumerate(orders)}
     unassigned.sort(key=lambda x: order_pos[x[0].code])
-    return Plan(truck_plans, unassigned, s, optimal=True)
+    return Plan(truck_plans, unassigned, s, optimal=optimal)
+
+
+def single_order_fits(truck: Truck, o: Order, loc: dict[str, Location], s: Settings) -> bool:
+    """Može li kamion odraditi samo ovaj nalog: baza → preuzimanje → isporuka → baza."""
+    if o.weight_kg > truck.capacity_kg or truck.max_machines < 1:
+        return False
+    b = loc[s.base]
+    tenths = (leg_tenths(b, loc[o.pickup]) + leg_tenths(loc[o.pickup], loc[o.delivery])
+              + leg_tenths(loc[o.delivery], b))
+    return limit_ok(tenths, 1, s)
+
+
+def _exact_routes(
+    trucks: list[Truck],
+    eligible: list[list[Order]],
+    candidates: list[Order],
+    loc: dict[str, Location],
+    s: Settings,
+) -> list[list[tuple[str, str]]]:
+    """Optimalna podjela: najviše izvršenih naloga, zatim najmanja ukupna kilometraža."""
+    bit = {o.code: 1 << i for i, o in enumerate(candidates)}
+    full = (1 << len(candidates)) - 1
+    options = []   # po kamionu: maska podskupa -> (desetinke km, radnje)
+    cache: dict[tuple, dict[int, tuple[int, list[tuple[str, str]]]]] = {}
+    for t, elig in zip(trucks, eligible):
+        sig = (t.capacity_kg, t.max_machines, tuple(o.code for o in elig))
+        if sig not in cache:   # isti kamioni s istim nalozima računaju se samo jednom
+            opt = solve_single_truck(t, elig, loc, s)
+            cache[sig] = {sum(bit[c] for c in sub): v for sub, v in opt.items()}
+        options.append(cache[sig])
+
+    # best[maska iskorištenih naloga] = (km, [maska po kamionu])
+    best: dict[int, tuple[int, list[int]]] = {0: (0, [])}
+    for opt in options:
+        new: dict[int, tuple[int, list[int]]] = {}
+        for used, (km, picks) in best.items():
+            free = full ^ used
+            if len(opt) < 1 << free.bit_count():     # manje opcija nego podskupova
+                subs = (m for m in opt if not m & used)
+            else:                                    # nabroji podskupove slobodnih naloga
+                subs = _submasks(free, opt)
+            for sub in subs:
+                key, total = used | sub, km + opt[sub][0]
+                if key not in new or total < new[key][0]:
+                    new[key] = (total, picks + [sub])
+        best = new
+
+    def rank(mask: int):
+        return (-mask.bit_count(), best[mask][0],
+                sorted(o.code for o in candidates if bit[o.code] & mask))
+
+    _, picks = best[min(best, key=rank)]
+    return [options[i][m][1] for i, m in enumerate(picks)]
+
+
+def _submasks(free: int, opt: dict[int, object]):
+    sub = free
+    while True:
+        if sub in opt:
+            yield sub
+        if sub == 0:
+            return
+        sub = (sub - 1) & free

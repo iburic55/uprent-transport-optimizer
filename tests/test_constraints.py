@@ -5,16 +5,14 @@ Pokretanje:  pytest -v
 from __future__ import annotations
 
 import itertools
-import sys
 from dataclasses import replace
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-
-from optimizer import LOCATIONS, ORDERS, TRUCKS, Order, Settings, Truck, optimize, validate_plan  # noqa: E402
-from optimizer.solver import DELIVERY, PICKUP, build_truck_plan, leg_km  # noqa: E402
+from optimizer import (LOCATIONS, MACHINES, ORDERS, TRUCKS, Order, Settings, Truck, check_inputs,
+                       optimize, validate_plan)
+from optimizer.heuristic import insertion_routes
+from optimizer.solver import DELIVERY, MAX_ORDERS_PER_TRUCK, PICKUP, build_truck_plan, leg_km
 
 LOC = {l.code: l for l in LOCATIONS}
 BY_CODE = {o.code: o for o in ORDERS}
@@ -100,6 +98,15 @@ def test_bez_limita_optimum_je_jedan_kamion_ali_prelazi_9h():
     assert max(t.total_min for t in free.trucks) > 9 * 60
 
 
+def test_zamka_n03_prelazi_na_kamion_a_uz_17_9_km_vise(plan):
+    """Tvrdnja iz README-a i aplikacije: limit od 9 h košta točno 17,9 km i prebacuje N03."""
+    truck_a = next(t for t in plan.trucks if t.truck.name == "Kamion A")
+    assert truck_a.orders_done == ["N03"]
+    free = optimize(settings=Settings(max_hours=10_000, handling_counts=False))
+    assert plan.total_km - free.total_km == pytest.approx(17.9)
+    assert all(t.total_min <= 9 * 60 for t in plan.trucks)
+
+
 def test_samo_voznja_u_limitu_daje_182_km():
     p = optimize(settings=Settings(handling_counts=False))
     assert validate_plan(p, ORDERS, LOCATIONS) == []
@@ -113,7 +120,15 @@ def test_kratko_radno_vrijeme_jasno_oznacava_neizvrsive_naloge():
     assert validate_plan(p, ORDERS, LOCATIONS) == []
     assert 0 < p.orders_done < 10
     assert len(p.unassigned) == 10 - p.orders_done
-    assert all("vremena" in reason or "h" in reason for _, reason in p.unassigned)
+    assert all("radnog vremena" in reason and "3 h" in reason for _, reason in p.unassigned)
+
+
+def test_limit_4h_odbija_upravo_n06_n08_n10():
+    """Scenarij iz demonstracije: uz 4 h rada izvrši se 7 naloga."""
+    p = optimize(settings=Settings(max_hours=4))
+    assert validate_plan(p, ORDERS, LOCATIONS) == []
+    assert [o.code for o, _ in p.unassigned] == ["N06", "N08", "N10"]
+    assert all(t.total_min <= 4 * 60 for t in p.trucks)
 
 
 def test_pretezak_stroj_se_odbija_s_razlogom():
@@ -145,6 +160,93 @@ def test_validator_hvata_isporuku_prije_preuzimanja():
                              BY_CODE, LOC, good.settings)
     bad = replace(good, trucks=[bad_a, good.trucks[1]])
     assert any("prije preuzimanja" in e for e in validate_plan(bad, ORDERS, LOCATIONS))
+
+
+def test_validator_hvata_pogresno_prikazano_opterecenje():
+    """Tablica u aplikaciji prikazuje teret nakon svake radnje – i to se provjerava."""
+    good = optimize()
+    b = good.trucks[1]
+    steps = list(b.steps)
+    steps[3] = replace(steps[3], load_kg=steps[3].load_kg + 1_000)
+    bad = replace(good, trucks=[good.trucks[0], replace(b, steps=steps)])
+    assert any("prikazano opterećenje" in e for e in validate_plan(bad, ORDERS, LOCATIONS))
+
+
+def test_validator_ne_pada_na_nepoznat_nalog_i_hvata_dvostruki_status():
+    good = optimize()
+    a = good.trucks[0]
+    bad_a = replace(a, actions=a.actions + [("N99", PICKUP)])
+    bad = replace(good, trucks=[bad_a, good.trucks[1]],
+                  unassigned=[(BY_CODE["N03"], "test")])
+    errors = " | ".join(validate_plan(bad, ORDERS, LOCATIONS))
+    assert "N99 ne postoji" in errors
+    assert "N03 je izvršen, a istodobno označen kao neizvršiv" in errors
+
+
+# ----------------------------------------------------------------- rubni slučajevi
+def test_bez_vozila_razlog_je_jasan():
+    p = optimize(trucks=[])
+    assert p.orders_done == 0 and len(p.unassigned) == len(ORDERS)
+    assert all(r == "Nema raspoloživih vozila." for _, r in p.unassigned)
+
+
+def test_bez_vremenskog_ogranicenja_izvrsi_sve_i_uz_malu_brzinu():
+    """Scenarij 'bez ograničenja' ne smije tiho imati limit (ranije 24 h -> 9/10 uz 5 km/h)."""
+    p = optimize(settings=Settings(max_hours=10_000, speed_kmh=5, handling_counts=False))
+    assert p.orders_done == 10 and p.total_km == pytest.approx(182.2)
+
+
+def _extra_orders(n: int) -> list[Order]:
+    codes = [l.code for l in LOCATIONS]
+    machines = list(MACHINES.items())
+    out = []
+    for i in range(n):
+        m, w = machines[(3 * i) % len(machines)]
+        a, b = codes[i % len(codes)], codes[(i * 7 + 3) % len(codes)]
+        if a == b:
+            b = codes[(i * 7 + 4) % len(codes)]
+        out.append(Order(f"X{i:02}", m, w, a, b))
+    return out
+
+
+def test_veliki_problem_koristi_heuristiku_i_postuje_ogranicenja():
+    orders = ORDERS + _extra_orders(MAX_ORDERS_PER_TRUCK - len(ORDERS) + 3)
+    p = optimize(orders=orders, settings=Settings(max_hours=24))
+    assert p.optimal is False
+    assert validate_plan(p, orders, LOCATIONS) == []
+    assert p.orders_done + len(p.unassigned) == len(orders)
+    for tp in p.trucks:
+        for step in tp.steps:
+            assert step.load_kg <= tp.truck.capacity_kg
+            assert step.machines_on_board <= tp.truck.max_machines
+
+
+def test_heuristika_je_izvediva_i_blizu_optimuma_na_zadanim_podacima():
+    s = Settings()
+    routes = insertion_routes(TRUCKS, ORDERS, LOC, s)
+    plans = [build_truck_plan(t, routes[i], BY_CODE, LOC, s) for i, t in enumerate(TRUCKS)]
+    km = round(sum(tp.km for tp in plans), 1)
+    heur = replace(optimize(), trucks=plans)
+    assert validate_plan(heur, ORDERS, LOCATIONS) == []
+    assert sum(len(tp.orders_done) for tp in plans) == 10
+    assert 200.1 <= km <= 200.1 * 1.15   # ne bolje od dokazanog optimuma, najviše 15 % lošije
+
+
+# ----------------------------------------------------------------- ulazni podaci
+def test_zadani_ulazni_podaci_su_ispravni():
+    assert check_inputs(TRUCKS, LOCATIONS, ORDERS) == []
+
+
+def test_neispravni_ulazni_podaci_se_odbijaju():
+    orders = ORDERS + [Order("N01", "M01", 800, "L2", "L3"),      # dupli kod naloga
+                       Order("N12", "M01", 800, "L4", "L4"),      # ista lokacija
+                       Order("N13", "MX", 0, "L1", "L2")]         # težina 0
+    trucks = TRUCKS + [Truck("Kamion C", 0, 2)]
+    locations = [l for l in LOCATIONS if l.code != "L0"]
+    problems = " | ".join(check_inputs(trucks, locations, orders))
+    for expected in ("„N01” pojavljuje se više puta", "N12: preuzimanje i isporuka",
+                     "N13: težina", "Kamion C: nosivost", "baze L0"):
+        assert expected in problems, expected
 
 
 # ----------------------------------------------------------------- optimalnost

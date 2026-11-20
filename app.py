@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from optimizer import LOCATIONS, MACHINES, ORDERS, TRUCKS, Location, Order, Settings, Truck, optimize, validate_plan
+from optimizer import LOCATIONS, MACHINES, ORDERS, TRUCKS, Location, Order, Settings, Truck, check_inputs, optimize, validate_plan
 from optimizer.solver import DELIVERY, PICKUP, RETURN, START
 
 st.set_page_config(page_title="UP Rent – optimizacija prijevoza", page_icon="🚚", layout="wide")
@@ -44,8 +44,44 @@ def default_frames():
     }
 
 
+TABLES = ("trucks", "machines", "locations", "orders")
+UNLIMITED_H = 10_000.0   # "bez vremenskog ograničenja" u usporedbi scenarija
+
 if "data" not in st.session_state:
     st.session_state.data = default_frames()
+    st.session_state.ed_ver = {t: 0 for t in TABLES}
+
+
+def editor_key(name: str) -> str:
+    return f"ed_{name}_{st.session_state.ed_ver[name]}"
+
+
+def apply_edits(name: str) -> None:
+    """on_change: promjene iz uređivača upiši u izvorne tablice.
+
+    Izvorna tablica se nikad ne zamjenjuje izlazom data_editora (kod num_rows="dynamic"
+    identitet widgeta ovisi o podacima, pa bi se neka uređivanja gubila). Nakon upisa
+    uređivač dobiva novi ključ, pa iste promjene ne mogu biti primijenjene dvaput.
+    """
+    state = st.session_state[editor_key(name)]
+    df = st.session_state.data[name].copy()
+    for row, changes in state.get("edited_rows", {}).items():
+        for col, value in changes.items():
+            df.iloc[int(row), df.columns.get_loc(col)] = value
+    deleted = state.get("deleted_rows", [])
+    if deleted:
+        df = df.drop(df.index[deleted])
+    added = [r for r in state.get("added_rows", []) if r]
+    if added:
+        df = pd.concat([df, pd.DataFrame(added)], ignore_index=True)
+    st.session_state.data[name] = df.reset_index(drop=True)
+    st.session_state.ed_ver[name] += 1
+
+
+def editor(name: str, **kwargs) -> None:
+    st.data_editor(st.session_state.data[name], hide_index=True, width="stretch",
+                   num_rows="dynamic", key=editor_key(name), on_change=apply_edits,
+                   args=(name,), **kwargs)
 
 # ------------------------------------------------------------------ bočna traka
 with st.sidebar:
@@ -60,9 +96,11 @@ with st.sidebar:
     st.divider()
     if st.button("↺ Vrati zadane podatke", width="stretch"):
         st.session_state.data = default_frames()
+        st.session_state.ed_ver = {t: v + 1 for t, v in st.session_state.ed_ver.items()}
         st.rerun()
     st.caption("Algoritam: egzaktno dinamičko programiranje po kamionu + optimalna dodjela "
-               "naloga. Rezultat je dokazano optimalan za zadane podatke.")
+               "naloga (dokazani optimum, do 12 naloga po kamionu). Za veće probleme "
+               "heuristika: najjeftinije umetanje + lokalna pretraga.")
 
 settings = Settings(max_hours=max_hours, handling_min=handling, speed_kmh=speed,
                     handling_counts=handling_counts)
@@ -82,27 +120,19 @@ with tab_in:
     c1, c2 = st.columns(2)
     with c1:
         st.subheader("1. Vozni park")
-        d["trucks"] = st.data_editor(d["trucks"], hide_index=True, width="stretch",
-                                     num_rows="dynamic", key="ed_trucks")
+        editor("trucks")
         st.subheader("2. Vrste strojeva")
-        d["machines"] = st.data_editor(d["machines"], hide_index=True, width="stretch",
-                                       num_rows="dynamic", key="ed_machines")
+        editor("machines")
     with c2:
         st.subheader("3. Lokacije")
-        d["locations"] = st.data_editor(d["locations"], hide_index=True,
-                                        width="stretch", num_rows="dynamic",
-                                        key="ed_locations")
+        editor("locations")
         st.subheader("4. Transportni nalozi")
         loc_codes = list(d["locations"]["Lokacija"].dropna())
-        d["orders"] = st.data_editor(
-            d["orders"], hide_index=True, width="stretch", num_rows="dynamic",
-            key="ed_orders",
-            column_config={
-                "Stroj": st.column_config.SelectboxColumn(
-                    options=list(d["machines"]["Stroj"].dropna())),
-                "Preuzimanje": st.column_config.SelectboxColumn(options=loc_codes),
-                "Isporuka": st.column_config.SelectboxColumn(options=loc_codes),
-            })
+        editor("orders", column_config={
+            "Stroj": st.column_config.SelectboxColumn(options=list(d["machines"]["Stroj"].dropna())),
+            "Preuzimanje": st.column_config.SelectboxColumn(options=loc_codes),
+            "Isporuka": st.column_config.SelectboxColumn(options=loc_codes),
+        })
         weights = dict(zip(d["machines"]["Stroj"], d["machines"]["Težina (kg)"]))
         preview = d["orders"].copy()
         preview["Težina (kg)"] = preview["Stroj"].map(weights)
@@ -113,13 +143,29 @@ with tab_in:
 # ------------------------------------------------------------------ pretvorba u model
 def build_model():
     d = st.session_state.data
-    trucks = [Truck(str(r["Vozilo"]), int(r["Nosivost (kg)"]), int(r["Max strojeva"]))
-              for _, r in d["trucks"].dropna().iterrows()]
-    weights = {str(r["Stroj"]): int(r["Težina (kg)"]) for _, r in d["machines"].dropna().iterrows()}
-    locations = [Location(str(r["Lokacija"]), float(r["X (km)"]), float(r["Y (km)"]),
-                          str(r["Naziv"] or "")) for _, r in
-                 d["locations"].dropna(subset=["Lokacija", "X (km)", "Y (km)"]).iterrows()]
-    orders, problems = [], []
+    problems: list[str] = []
+    required = {"trucks": None, "machines": None,
+                "locations": ["Lokacija", "X (km)", "Y (km)"], "orders": ["Nalog"]}
+    names = {"trucks": "Vozni park", "machines": "Vrste strojeva", "locations": "Lokacije",
+             "orders": "Transportni nalozi"}
+    for t, cols in required.items():
+        dropped = len(d[t]) - len(d[t].dropna(subset=cols))
+        if dropped:
+            st.warning(f"{names[t]}: {dropped} nepotpun(ih) redak(a) zanemareno.")
+    try:
+        trucks = [Truck(str(r["Vozilo"]), int(r["Nosivost (kg)"]), int(r["Max strojeva"]))
+                  for _, r in d["trucks"].dropna().iterrows()]
+        machines = [str(m) for m in d["machines"].dropna()["Stroj"]]
+        for m in sorted({m for m in machines if machines.count(m) > 1}):
+            problems.append(f"Oznaka stroja „{m}” pojavljuje se više puta.")
+        weights = {str(r["Stroj"]): int(r["Težina (kg)"])
+                   for _, r in d["machines"].dropna().iterrows()}
+        locations = [Location(str(r["Lokacija"]), float(r["X (km)"]), float(r["Y (km)"]),
+                              "" if pd.isna(r["Naziv"]) else str(r["Naziv"])) for _, r in
+                     d["locations"].dropna(subset=["Lokacija", "X (km)", "Y (km)"]).iterrows()]
+    except (TypeError, ValueError) as e:
+        return [], [], [], [f"Neispravna vrijednost u ulaznim tablicama: {e}"]
+    orders = []
     for _, r in d["orders"].dropna(subset=["Nalog"]).iterrows():
         m = str(r["Stroj"])
         if m not in weights:
@@ -127,15 +173,40 @@ def build_model():
             continue
         orders.append(Order(str(r["Nalog"]), m, weights[m], str(r["Preuzimanje"]),
                             str(r["Isporuka"])))
-    if settings.base not in {l.code for l in locations}:
-        problems.append("Lokacija baze L0 mora postojati.")
+    problems += check_inputs(trucks, locations, orders, settings.base)
     return trucks, locations, orders, problems
 
 
-@st.cache_data(show_spinner="Računam optimalni raspored…")
+@st.cache_data(show_spinner="Računam raspored…")
 def run(trucks, locations, orders, s):
     return optimize(orders=list(orders), trucks=list(trucks), locations=list(locations),
                     settings=s)
+
+
+def time_limit_note(p) -> str | None:
+    """Zamka zadatka: raspored s najmanje km bez vremenskog limita može prekoračiti radno vrijeme.
+
+    Vraća objašnjenje ako je raspored zbog limita dulji od teoretskog minimuma (uz isti broj
+    izvršenih naloga), inače None.
+    """
+    s = p.settings
+    free = run(tuple(trucks), tuple(locations), tuple(orders),
+               Settings(max_hours=UNLIMITED_H, handling_min=s.handling_min,
+                        speed_kmh=s.speed_kmh, handling_counts=False))
+    if not (free.total_km < p.total_km and free.orders_done == p.orders_done):
+        return None
+    used = (lambda t: t.total_min) if s.handling_counts else (lambda t: t.drive_min)
+    longest = max(free.trucks, key=used)
+    what = "vožnja + utovar/istovar" if s.handling_counts else "vožnja"
+    owner = {c: tp.truck.name for tp in p.trucks for c in tp.orders_done}
+    moved = sorted(c for tp in free.trucks for c in tp.orders_done if owner.get(c) != tp.truck.name)
+    moved_txt = ", ".join(f"{c} → {owner[c]}" for c in moved)
+    return (f"**Zašto ne {free.total_km:.1f} km?** Najkraći raspored bez vremenskog ograničenja "
+            f"ima {free.total_km:.1f} km, ali tada {longest.truck.name} radi "
+            f"**{hhmm(used(longest))} h** ({what}), a dopušteno je {s.max_hours:g} h. "
+            f"Optimizator zato premješta naloge ({moved_txt}): "
+            f"{p.total_km:.1f} km (+{p.total_km - free.total_km:.1f} km), a svi vozači "
+            f"završavaju unutar radnog vremena.")
 
 
 trucks, locations, orders, problems = build_model()
@@ -144,10 +215,7 @@ if problems:
     for p in problems:
         st.error(p)
 else:
-    try:
-        plan = run(tuple(trucks), tuple(locations), tuple(orders), settings)
-    except ValueError as e:
-        st.error(str(e))
+    plan = run(tuple(trucks), tuple(locations), tuple(orders), settings)
 
 # ------------------------------------------------------------------ rezultat
 with tab_out:
@@ -163,6 +231,13 @@ with tab_out:
                             f"{nalog(len(tp.orders_done))} · {hhmm(tp.total_min)} h",
                             delta_color="off", delta_arrow="off")
 
+        note = time_limit_note(plan)
+        if note:
+            st.info("⚠️ " + note)
+        if not plan.optimal:
+            st.warning("Heuristički raspored – nije dokazano optimalan. Neki kamion ima više od "
+                       "12 mogućih naloga, što je previše za egzaktni algoritam; korišteno je "
+                       "najjeftinije umetanje + lokalna pretraga.")
         if errors:
             st.error("Nezavisna provjera plana NIJE prošla:\n\n- " + "\n- ".join(errors))
         else:
@@ -171,12 +246,9 @@ with tab_out:
                        "radno vrijeme).")
 
         if plan.unassigned:
-            st.error(f"⚠️ {len(plan.unassigned)} nalog(a) NIJE moguće izvršiti:")
-            st.dataframe(pd.DataFrame([{"Nalog": o.code, "Stroj": o.machine,
-                                        "Težina (kg)": o.weight_kg,
-                                        "Relacija": f"{o.pickup} → {o.delivery}",
-                                        "Razlog": r} for o, r in plan.unassigned]),
-                         hide_index=True, width="stretch")
+            st.error(f"⚠️ {nalog(len(plan.unassigned))} NIJE moguće izvršiti:")
+            for o, r in plan.unassigned:
+                st.markdown(f"- **{o.code}** – {o.machine} ({o.weight_kg:,} kg), {o.pickup} → {o.delivery}: {r}")
 
         for i, tp in enumerate(plan.trucks):
             limit_used = tp.total_min if settings.handling_counts else tp.drive_min
@@ -256,7 +328,7 @@ with tab_cmp:
             ("Samo vožnja ≤ limit", Settings(
                 max_hours=max_hours, handling_min=handling, speed_kmh=speed, handling_counts=False)),
             ("Bez vremenskog ograničenja (teoretski minimum km)", Settings(
-                max_hours=24, handling_min=handling, speed_kmh=speed, handling_counts=False)),
+                max_hours=UNLIMITED_H, handling_min=handling, speed_kmh=speed, handling_counts=False)),
         ]
         rows, results = [], []
         for name, sc in scenarios:
@@ -269,12 +341,6 @@ with tab_cmp:
                                       f"{hhmm(tp.total_min)} h")
             rows.append(row)
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
-        strict, free = results[0], results[2]
-        if free.total_km < strict.total_km and free.orders_done == strict.orders_done:
-            longest = max(free.trucks, key=lambda t: t.total_min)
-            st.info(
-                f"Teoretski minimum je {free.total_km:.1f} km, ali tada {longest.truck.name} "
-                f"radi {hhmm(longest.total_min)} h (vožnja + utovar/istovar). Uz ograničenje od "
-                f"{max_hours:g} h rada optimizator dio naloga prebacuje na drugi kamion: "
-                f"{strict.total_km:.1f} km (+{strict.total_km - free.total_km:.1f} km), "
-                f"a svi vozači završavaju unutar radnog vremena.")
+        note = time_limit_note(results[0])
+        if note:
+            st.info(note)

@@ -19,7 +19,8 @@ from optimizer import LOCATIONS, ORDERS, TRUCKS, Settings, optimize  # noqa: E40
 from optimizer.solver import leg_tenths  # noqa: E402
 
 
-def solve_with_ortools(settings: Settings, seconds: int = 10) -> float | None:
+def solve_with_ortools(settings: Settings, seconds: int = 10) -> tuple[float, int] | None:
+    """Vrati (ukupno km, broj izostavljenih naloga) ili None ako OR-Tools ne nađe rješenje."""
     loc = {l.code: l for l in LOCATIONS}
     # čvor 0 = baza, zatim (preuzimanje, isporuka) za svaki nalog
     nodes = [settings.base]
@@ -93,5 +94,8 @@ if __name__ == "__main__":
         s = Settings(handling_counts=hc)
         dp = optimize(settings=s)
         ort = solve_with_ortools(s)
+        if ort is None:
+            print(f"handling_counts={hc}: DP = {dp.total_km} km | OR-Tools nije našao rješenje")
+            continue
         print(f"handling_counts={hc}: DP = {dp.total_km} km ({dp.orders_done} naloga) | "
               f"OR-Tools = {ort[0]} km (izostavljeno naloga: {ort[1]})")
