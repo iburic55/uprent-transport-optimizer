@@ -38,7 +38,7 @@ Manje zamke:
 | Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
 | Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 32 testa (`tests/test_constraints.py`, `tests/test_api.py`) |
 | Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
-| Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
+| Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena): **~6 h** (zadatak ~5 h + dorade ~1 h) |
 
 ---
 
@@ -127,53 +127,29 @@ tumačenje dnevnog limita.
 
 ## 3. Optimizacijska logika
 
-Problem je **Pickup and Delivery Vehicle Routing Problem** s kapacitetom
-(kg i broj strojeva) i vremenskim ograničenjem. Općenito je NP-težak, ali za ovu
-veličinu (10 naloga, 2 kamiona) može se riješiti **egzaktno**, pa sam umjesto
-heuristike odabrao algoritam koji jamči optimum.
+**Ukratko:** problem je *Pickup and Delivery Vehicle Routing Problem* s kapacitetom (kg i broj
+strojeva) i vremenskim limitom. Za 10 naloga i 2 kamiona rješava se **egzaktno** u dva koraka,
+pa je rezultat dokazani optimum (potvrđen OR-Toolsom i brute forceom), a ne procjena.
 
-**Korak 1 – optimalna ruta za svaki kamion i svaki podskup naloga (dinamičko programiranje).**
-Stanje = status svakog naloga (čeka / na kamionu / isporučen, zapisano kao dvije bitmaske)
-+ trenutna lokacija.
-Iz stanja se smije samo:
-- **preuzeti** nalog koji čeka, ako stroj stane po težini i broju mjesta;
-- **isporučiti** nalog koji je na kamionu.
+**Korak 1 – najbolja ruta po kamionu (dinamičko programiranje).** Stanje = koji su nalozi na
+kamionu, koji su isporučeni i gdje je kamion. Iz stanja se smije samo *preuzeti* nalog koji
+stane po težini i broju mjesta ili *isporučiti* nalog koji je na kamionu, pa nosivost i
+redoslijed preuzimanje → isporuka ne mogu biti prekršeni. Za svako stanje pamti se najkraći put,
+a stanja koja više ne stanu u radno vrijeme odmah se odbacuju. Rezultat je najkraća ruta
+baza → … → baza za **svaki** podskup naloga (oko 0,2 s).
 
-Zato nosivost i redoslijed preuzimanje → isporuka *ne mogu* biti prekršeni. Svaki korak
-povećava zbroj statusa za 1, pa se stanja obrađuju po razinama i za svako se pamti najkraći
-put. Kad je kamion prazan, ruta se zatvori povratkom u bazu. Tako za **svaki** podskup naloga
-dobijemo najkraću rutu baza → … → baza. Zbog kapaciteta (najviše 2 odnosno 3 stroja)
-dostižnih stanja ima malo, pa izračun traje oko 0,2 s. Stanja koja već premašuju radno
-vrijeme (prijeđeni km + obavljeni i neizbježni utovari/istovari) odmah se odbacuju; povratak
-u bazu se namjerno ne procjenjuje, jer zaokruživanje dionica može narušiti nejednakost
-trokuta, a rezanje mora ostati egzaktno.
+**Korak 2 – podjela naloga.** Kamion A smije voziti samo strojeve ≤ 3.500 kg (N01–N05), kamion B
+sve. Od svih podjela bez preklapanja bira se ona s **najviše izvršenih naloga**, a zatim s
+**najmanje kilometara**. Nalog koji ne stane označi se kao neizvršiv, s razlogom za svaki kamion.
 
-**Korak 2 – podjela između kamiona.** Kamion A smije voziti samo strojeve ≤ 3.500 kg
-(N01–N05), kamion B sve. Od svih parova *disjunktnih* podskupova koji stanu u radno
-vrijeme bira se onaj s (nabrajanjem podskupova slobodnih naloga, najviše 3^n kombinacija;
-isti kamioni s istim nalozima računaju se samo jednom):
-1. **najviše izvršenih naloga** (prioritet: ništa ne ostaje neisporučeno), zatim
-2. **najmanjom ukupnom kilometražom**.
+**Pravila izračuna:** euklidska udaljenost zaokružena na 0,1 km **po dionici** (računa se u
+desetinkama km kao cijelim brojevima); vožnja 60 km/h; svaki utovar i istovar 20 min.
+**Pretpostavka:** u 9 h ulazi vožnja **i** utovar/istovar (stvarno radno vrijeme vozača);
+drugo tumačenje dostupno je kao prekidač.
 
-Nalozi koji ne stanu označe se kao neizvršivi, s razlogom za svaki kamion: stroj je pretežak ili bi kamion uz svoje naloge radio predugo (procjena najjeftinijim umetanjem u njegovu rutu).
-
-**Veći problemi – heuristika (`optimizer/heuristic.py`).** Ako neki kamion ima više od 12
-mogućih naloga (3^n stanja postaje presporo), aplikacija ne pada, nego koristi:
-najjeftinije izvedivo umetanje para preuzimanje/isporuka → lokalnu pretragu (premještanje
-naloga između kamiona i pomicanje pojedinih radnji unutar rute) → više početnih redoslijeda
-(fiksni seed, rezultat je ponovljiv). Aplikacija tada jasno upozorava da raspored nije dokazano
-optimalan, a validator ga provjerava kao i egzaktni. Na zadanim podacima heuristika daje
-219,7 km (+9,8 % od optimuma), a uz limit samo za vožnju 183,6 km (+0,8 %). Uz limit od 4 h
-izvrši 6 naloga, a optimum 7, pa se za ≤ 12 naloga po kamionu uvijek koristi egzaktni DP.
-
-**Pravila izračuna**
-- Udaljenost: euklidska, zaokružena na 0,1 km **po dionici**. Interno se računa u
-  desetinkama km (cijeli brojevi), pa se zaokruživanje ne gomila.
-- Vrijeme: vožnja = km / 60 km/h; svaki utovar i svaki istovar traje 20 min.
-- **Pretpostavka:** u dnevni limit od 9 h ulazi vožnja **i** utovar/istovar, jer je to
-  stvarno radno vrijeme vozača i konzervativnija varijanta. U aplikaciji se može prebaciti
-  na „samo vožnja”.
-- Više radnji na istoj lokaciji (npr. istovar pa utovar na L8) ne dodaje kilometre.
+**Veći problemi:** ako kamion ima više od 12 mogućih naloga, DP postaje prespor, pa se koristi
+heuristika (najjeftinije umetanje + lokalna pretraga, `optimizer/heuristic.py`) uz jasno
+upozorenje da raspored nije dokazano optimalan.
 
 ### Ključni uvid
 
@@ -183,11 +159,8 @@ izvrši 6 naloga, a optimum 7, pa se za ≤ 12 naloga po kamionu uvijek koristi 
 | Limit 9 h, samo vožnja | 182,2 km | Isto kao gore (vožnja je samo ~3 h) |
 | **Limit 9 h, vožnja + utovar/istovar (zadano)** | **200,1 km** | A: N03 (1 h 17 min), B: ostalih 9 naloga (8 h 43 min) |
 
-Najkraća kilometraža zahtijevala bi da jedan vozač radi 42 minute preko limita. Optimizator
-zato prebacuje nalog N03 (L9 → L4) na kamion A. To je najjeftinija preraspodjela
-(+17,9 km), nakon koje oba vozača završavaju na vrijeme. Zanimljiv je i rad kamiona B:
-M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
-9.900 / 10.000 kg).
+Prebacivanje naloga N03 (L9 → L4) na kamion A najjeftinija je preraspodjela (+17,9 km) nakon
+koje oba vozača završavaju unutar 9 h.
 
 ## 4. Testovi
 
@@ -248,63 +221,38 @@ tools/record_demo.js      automatsko snimanje demonstracijskog videa (Playwright
 
 ## 6. Korištenje AI alata i provjera rezultata
 
-Za razvoj sam koristio **Claude (Anthropic)**: za analizu problema, prijedlog pristupa,
-pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjerovao bez provjere:
+Koristio sam **Claude (Anthropic)** za analizu problema, prijedlog pristupa te pisanje koda,
+testova i dokumentacije. Nijednom rezultatu nisam vjerovao bez neovisne provjere:
 
-1. **Neovisna usporedba s OR-Toolsom.** Isti problem modeliran je u Googleovom solveru i dao
-   je istu kilometražu (200,1 km i 182,2 km) za oba tumačenja limita.
-2. **Brute force.** Na manjim primjerima isprobane su *sve* permutacije radnji; DP daje isti
-   optimum.
-3. **Nezavisni validator.** Odvojen kod ponovno računa sva ograničenja i namjerno je testiran
-   na pokvarenim planovima kako bi se vidjelo da stvarno javlja greške.
-4. **Ručna provjera.** Ruta kamiona A izračunata je na papiru:
-   √89 ≈ 9,4 + √290 ≈ 17,0 + √117 ≈ 10,8 = 37,2 km; vrijeme 37 min vožnje + 2 × 20 min = 1 h 17 min.
-5. **Kritičko čitanje testova.** Prvi test „M10 putuje sam” bio je pogrešno napisan
-   (gledao je ukupni teret ≥ 9.400 kg, a to može biti i M09 + M04). Test je pao, a ja sam
-   utvrdio da je greška u testu, ne u algoritmu, i ispravio ga da gleda koji su strojevi
-   stvarno na kamionu.
-6. **Tumačenje zadatka.** Nejasnoću oko toga ulazi li utovar/istovar u 9 h nisam prepustio
-   AI-ju da prešutno odluči; izložena je kao pretpostavka i prekidač u aplikaciji.
-7. **Završni pregled.** Prije predaje ponovno sam pokrenuo sve provjere (OR-Tools, scenarij
-   od 4 h, ručni izračun) i aplikaciju u pregledniku. Pritom sam našao i ispravio: test
-   neizvršivih naloga koji bi prošao gotovo s bilo kojim tekstom, nedostajuću provjeru
-   ulaznih podataka (dupli nalog tiho bi pregazio drugi) i preniski minimum verzije Streamlita.
-8. **Tehnički pregled (code review).** Svaku sumnju sam potvrdio prije popravka:
-   - **gubljenje uređivanja u tablicama** – izlaz `data_editora` vraćao se kao njegov ulaz, a kod
-     `num_rows="dynamic"` identitet widgeta ovisi o podacima. U pregledniku (Playwright) druga
-     uzastopna izmjena iste tablice bila je izgubljena. Sada se izmjene upisuju u izvorne
-     tablice u `on_change` povratnom pozivu, a isti test u pregledniku potvrđuje obje izmjene;
-   - scenarij „bez ograničenja” zapravo je imao limit od 24 h (uz 5 km/h izvršio 9/10);
-   - više od 12 naloga po kamionu rušilo je izračun → heuristika;
-   - pogrešan razlog kad nema vozila; validator je mogao pasti na nepoznatom nalogu;
-   - DP je ubrzan oko 5 puta (12 naloga, oba kamiona po 10 t: 12 s → 2 s), uz iste rezultate
-     (testovi brute force i OR-Tools);
-   - uklonjen neiskorišten kod (`distance_matrix`, `Plan.notes`) i `sys.path` hack u testovima.
-9. **React + FastAPI sučelje.** Frontend ne sadrži poslovnu logiku: sve brojke dolaze iz istog
-   optimizatora, a API testovi (`tests/test_api.py`) provjeravaju da daje iste rezultate.
-   Sučelje sam provjerio u pregledniku (Playwright): dvije uzastopne izmjene nosivosti
-   (185,8 → 187,5 km, isto kao Python), negativna koordinata, dupli nalog, limit od 4 h,
-   tamna tema i mobilni prikaz bez vodoravnog pomicanja.
-10. **Završna provjera u pregledniku.** Automatski test sučelja (Playwright) pronašao je bug koji
-    unit testovi ne vide: u polju za radno vrijeme brisanje „9” i upis „4” ostavljali su 9 h.
-    Polje sada drži vlastiti tekst, prihvaća decimalni zarez i ograničava vrijednost na raspon.
-    Razlog neizvršivog naloga sada je napisan po kamionu, a natpis prekidača za utovar/istovar
-    jasno kaže što se broji u 9 h. Na kraju je sve provjereno na čistom klonu repozitorija
-    (instalacija, 32 testa, izgradnja frontenda, 200,1 km).
+1. **OR-Tools:** isti problem riješen Googleovim solverom daje istih 200,1 km (i 182,2 km za
+   drugo tumačenje limita).
+2. **Brute force:** na manjim primjerima isprobane su sve permutacije radnji; DP daje isti optimum.
+3. **Nezavisni validator:** odvojen kod iz niza radnji ponovno računa sva ograničenja, a testiran
+   je i na namjerno pokvarenim planovima.
+4. **Ručni izračun:** ruta kamiona A je 9,4 + 17,0 + 10,8 = 37,2 km; 37 min vožnje + 2 × 20 min
+   = 1 h 17 min.
+5. **Testovi u pregledniku (Playwright):** klikovi i unos u stvarnom sučelju, desktop i mobitel.
+6. **Kritičko čitanje:** nejasnoću oko 9 h nisam prepustio AI-ju, nego sam je izložio kao
+   pretpostavku i prekidač; testove sam čitao jednako kritički kao kod.
+
+Provjere su pronašle stvarne greške koje sam ispravio: krivo napisan test „M10 putuje sam”,
+gubljenje druge izmjene u Streamlit tablici, pad aplikacije za više od 12 naloga po kamionu
+(sada heuristika) i polje za radno vrijeme koje nije primalo novi upis.
 
 ## 7. Procjena utrošenog vremena
 
+**Ukupno ~6 h**, u skladu s predviđenim trajanjem zadatka: sam zadatak ~5 h, a dorade nakon
+vlastitog pregleda ~1 h.
+
 | Aktivnost | Vrijeme |
 |---|---|
-| Analiza zadatka i odabir pristupa | 0,5 h |
-| Optimizator i validator | 1 h |
-| Web sučelje | 1 h |
-| Testovi i neovisne provjere (OR-Tools, brute force, ručno) | 1 h |
-| Dokumentacija | 0,5 h |
-| Završni pregled (provjera svih brojki, validacija ulaza, dodatni testovi) | 0,5 h |
-| Tehnički pregled: bugovi, rubni slučajevi, ubrzanje, heuristika | 1,5 h |
-| React + FastAPI sučelje (API, komponente, provjera u pregledniku) | 3 h |
-| **Ukupno** | **~9 h** |
+| Analiza zadatka i prototip: optimizator (DP), validator, testovi, Streamlit sučelje | 1,5 h |
+| Završni i tehnički pregled: bugovi, rubni slučajevi, provjera ulaza, heuristika, ubrzanje DP-a | 1,5 h |
+| React + FastAPI sučelje i video demonstracija | 1,5 h |
+| Dokumentacija i završna provjera na čistom klonu | 0,5 h |
+| *Zadatak ukupno* | *~5 h* |
+| Dorade nakon pregleda: razlog po kamionu, usporedba kamiona, polje za vrijeme, prekidač, sažeta traka, novi video | ~1 h |
+| **Ukupno** | **~6 h** |
 
 ## 8. Ograničenja i mogući nastavak
 
