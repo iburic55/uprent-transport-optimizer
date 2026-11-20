@@ -10,6 +10,18 @@ Kamion B 162,9 km), oba vozača unutar 9 h. Rješenje je **dokazano optimalno**
 
 ![Raspored](docs/raspored.png)
 
+## Sadržaj predaje
+
+| Traženo u zadatku (točka 8) | Gdje se nalazi |
+|---|---|
+| Izvorni kod aplikacije | Ovaj repozitorij (struktura u odjeljku [5](#5-struktura)) |
+| Kratke upute za pokretanje | [1. Pokretanje](#1-pokretanje) |
+| Funkcionalna demonstracija | [2. Funkcionalna demonstracija](#2-funkcionalna-demonstracija) |
+| Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
+| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 16 testova u `tests/test_constraints.py` |
+| Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
+| Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
+
 ---
 
 ## 1. Pokretanje
@@ -33,7 +45,24 @@ pip install ortools
 python tools/verify_ortools.py
 ```
 
-## 2. Što aplikacija radi
+## 2. Funkcionalna demonstracija
+
+Nakon `streamlit run app.py` aplikacija se otvara na http://localhost:8501. Za demonstraciju
+predlažem ovaj redoslijed (oko 3 minute):
+
+1. **Ulazni podaci:** vozni park, strojevi, lokacije i nalozi iz zadatka.
+2. **Raspored:** ukupno 200,1 km, 10/10 naloga, zeleni status nezavisne provjere. Za oba kamiona
+   prikazani su redoslijed lokacija, radnje, teret i broj strojeva nakon svake radnje te vrijeme.
+3. **Karta:** rute oba kamiona sa smjerom vožnje.
+4. **Usporedba scenarija:** zašto teoretski minimum od 182,2 km nije dopušten (9 h 42 min rada).
+5. **Neizvršivi nalozi uživo:** u bočnoj traci smanjiti radno vrijeme na 4 h. Aplikacija tada
+   izvrši 7 naloga, a za N06, N08 i N10 crveno ispiše razlog.
+6. **Promjena podataka:** npr. promijeniti stroj na nalogu ili nosivost kamiona; raspored se
+   odmah ponovno izračuna.
+
+![Karta ruta](docs/karta.png)
+
+## 2a. Što aplikacija radi
 
 | Zahtjev iz zadatka | Gdje / kako |
 |---|---|
