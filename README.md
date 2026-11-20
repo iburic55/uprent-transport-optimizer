@@ -84,7 +84,7 @@ Nakon `uvicorn api.main:app` aplikacija se otvara na http://localhost:8000. Za d
 predlažem ovaj redoslijed (oko 3 minute):
 
 1. **Vrh stranice:** ukupno 200,1 km, 10/10 naloga, oznake „Dokazani optimum” i „Ograničenja
-   zadovoljena”, te okvir **„Zašto ne 182,2 km?”** (zamka s 9 h).
+   zadovoljena”, te traka **„Zašto ne 182,2 km?”** (zamka s 9 h); „Objasni” otvara puno objašnjenje.
 2. **Raspored:** vremenska crta radnog dana s crtom limita od 9 h i **usporedba kamiona** jedan uz
    drugoga (km, nalozi, radno vrijeme prema limitu, vrh tereta prema nosivosti, ruta), ispod
    koje su grafovi tereta i tablice radnji na klik. Prekidač „Detaljno” prikazuje svaki kamion
