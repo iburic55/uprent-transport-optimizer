@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from optimizer import LOCATIONS, MACHINES, ORDERS, TRUCKS, Location, Order, Settings, Truck, check_inputs, optimize, validate_plan
+from optimizer.insight import UNLIMITED_H, time_limit_insight, unlimited_settings
 from optimizer.solver import DELIVERY, PICKUP, RETURN, START
 
 st.set_page_config(page_title="UP Rent – optimizacija prijevoza", page_icon="🚚", layout="wide")
@@ -45,7 +46,6 @@ def default_frames():
 
 
 TABLES = ("trucks", "machines", "locations", "orders")
-UNLIMITED_H = 10_000.0   # "bez vremenskog ograničenja" u usporedbi scenarija
 
 if "data" not in st.session_state:
     st.session_state.data = default_frames()
@@ -184,28 +184,18 @@ def run(trucks, locations, orders, s):
 
 
 def time_limit_note(p) -> str | None:
-    """Zamka zadatka: raspored s najmanje km bez vremenskog limita može prekoračiti radno vrijeme.
-
-    Vraća objašnjenje ako je raspored zbog limita dulji od teoretskog minimuma (uz isti broj
-    izvršenih naloga), inače None.
-    """
-    s = p.settings
-    free = run(tuple(trucks), tuple(locations), tuple(orders),
-               Settings(max_hours=UNLIMITED_H, handling_min=s.handling_min,
-                        speed_kmh=s.speed_kmh, handling_counts=False))
-    if not (free.total_km < p.total_km and free.orders_done == p.orders_done):
+    """Zamka zadatka (vidi optimizer/insight.py) kao tekst za prikaz, ili None."""
+    free = run(tuple(trucks), tuple(locations), tuple(orders), unlimited_settings(p.settings))
+    ins = time_limit_insight(p, free)
+    if ins is None:
         return None
-    used = (lambda t: t.total_min) if s.handling_counts else (lambda t: t.drive_min)
-    longest = max(free.trucks, key=used)
-    what = "vožnja + utovar/istovar" if s.handling_counts else "vožnja"
-    owner = {c: tp.truck.name for tp in p.trucks for c in tp.orders_done}
-    moved = sorted(c for tp in free.trucks for c in tp.orders_done if owner.get(c) != tp.truck.name)
-    moved_txt = ", ".join(f"{c} → {owner[c]}" for c in moved)
-    return (f"**Zašto ne {free.total_km:.1f} km?** Najkraći raspored bez vremenskog ograničenja "
-            f"ima {free.total_km:.1f} km, ali tada {longest.truck.name} radi "
-            f"**{hhmm(used(longest))} h** ({what}), a dopušteno je {s.max_hours:g} h. "
-            f"Optimizator zato premješta naloge ({moved_txt}): "
-            f"{p.total_km:.1f} km (+{p.total_km - free.total_km:.1f} km), a svi vozači "
+    what = "vožnja + utovar/istovar" if ins.handling_counts else "vožnja"
+    moved = ", ".join(f"{c} → {t}" for c, t in ins.moved)
+    return (f"**Zašto ne {ins.free_km:.1f} km?** Najkraći raspored bez vremenskog ograničenja "
+            f"ima {ins.free_km:.1f} km, ali tada {ins.longest_truck} radi "
+            f"**{hhmm(ins.longest_min)} h** ({what}), a dopušteno je {ins.limit_h:g} h. "
+            f"Optimizator zato premješta naloge ({moved}): "
+            f"{ins.plan_km:.1f} km (+{ins.delta_km:.1f} km), a svi vozači "
             f"završavaju unutar radnog vremena.")
 
 

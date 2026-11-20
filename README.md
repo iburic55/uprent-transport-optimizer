@@ -26,7 +26,7 @@ Manje zamke:
 - uz zadane podatke **nijedan nalog nije neizvršiv**; upozorenje se vidi tek uz strože uvjete
   (npr. limit od 4 h → N06, N08, N10).
 
-![Raspored](docs/raspored.png)
+![Raspored – React sučelje](docs/react-raspored.png)
 
 ## Sadržaj predaje
 
@@ -36,7 +36,7 @@ Manje zamke:
 | Kratke upute za pokretanje | [1. Pokretanje](#1-pokretanje) |
 | Funkcionalna demonstracija | [2. Funkcionalna demonstracija](#2-funkcionalna-demonstracija) |
 | Kratak opis optimizacijske logike | [3. Optimizacijska logika](#3-optimizacijska-logika) |
-| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 25 testova u `tests/test_constraints.py` |
+| Najmanje tri testa poslovnih ograničenja | [4. Testovi](#4-testovi): 31 test (`tests/test_constraints.py`, `tests/test_api.py`) |
 | Osvrt na AI alate i provjeru rezultata | [6. Korištenje AI alata](#6-korištenje-ai-alata-i-provjera-rezultata) |
 | Procjena stvarnog vremena razvoja | [7. Procjena utrošenog vremena](#7-procjena-utrošenog-vremena) |
 
@@ -44,17 +44,26 @@ Manje zamke:
 
 ## 1. Pokretanje
 
-Potrebno: Python 3.10+ (Streamlit ≥ 1.52, instalira se iz `requirements.txt`)
+Potrebno: **Python 3.10+** i **Node.js 20+**.
 
 ```bash
 git clone https://github.com/iburic55/uprent-transport-optimizer.git
 cd uprent-transport-optimizer
 pip install -r requirements.txt
 
-streamlit run app.py          # web aplikacija -> http://localhost:8501
-pytest -v                     # testovi poslovnih ograničenja
+# React sučelje (jednom): izgradnja frontenda
+cd frontend && npm install && npm run build && cd ..
+
+uvicorn api.main:app          # aplikacija + API -> http://localhost:8000  (API docs: /docs)
+pytest -v                     # testovi poslovnih ograničenja i API-ja
 python -m optimizer           # isti raspored ispisan u terminalu
 ```
+
+Razvojni način (automatsko osvježavanje): `uvicorn api.main:app --reload` u jednom terminalu i
+`cd frontend && npm run dev` u drugom → http://localhost:5173 (Vite prosljeđuje `/api` na 8000).
+
+**Rezervno sučelje bez Node.js-a:** `streamlit run app.py` → http://localhost:8501 (iste
+funkcionalnosti, isti optimizator).
 
 Opcionalna neovisna provjera s Google OR-Toolsom:
 
@@ -65,20 +74,25 @@ python tools/verify_ortools.py
 
 ## 2. Funkcionalna demonstracija
 
-Nakon `streamlit run app.py` aplikacija se otvara na http://localhost:8501. Za demonstraciju
+Nakon `uvicorn api.main:app` aplikacija se otvara na http://localhost:8000. Za demonstraciju
 predlažem ovaj redoslijed (oko 3 minute):
 
-1. **Ulazni podaci:** vozni park, strojevi, lokacije i nalozi iz zadatka.
-2. **Raspored:** ukupno 200,1 km, 10/10 naloga, zeleni status nezavisne provjere. Za oba kamiona
-   prikazani su redoslijed lokacija, radnje, teret i broj strojeva nakon svake radnje te vrijeme.
-3. **Karta:** rute oba kamiona sa smjerom vožnje.
-4. **Usporedba scenarija:** zašto teoretski minimum od 182,2 km nije dopušten (9 h 42 min rada).
-5. **Neizvršivi nalozi uživo:** u bočnoj traci smanjiti radno vrijeme na 4 h. Aplikacija tada
-   izvrši 7 naloga, a za N06, N08 i N10 crveno ispiše razlog.
-6. **Promjena podataka:** npr. promijeniti stroj na nalogu ili nosivost kamiona; raspored se
-   odmah ponovno izračuna.
+1. **Vrh stranice:** ukupno 200,1 km, 10/10 naloga, oznake „Dokazani optimum” i „Ograničenja
+   zadovoljena”, te okvir **„Zašto ne 182,2 km?”** (zamka s 9 h).
+2. **Raspored:** vremenska crta radnog dana s crtom limita od 9 h; za svaki kamion redoslijed
+   lokacija, graf tereta i tablica radnji (teret i broj strojeva nakon svake radnje, vrijeme).
+3. **Karta:** gumb „Pokreni vožnju” animira oba kamiona po stvarnoj vremenskoj crti, uz trenutnu
+   radnju i teret.
+4. **Scenariji:** usporedba tumačenja limita (200,1 / 182,2 / 182,2 km).
+5. **Neizvršivi nalozi uživo:** radno vrijeme na 4 h → 7 naloga, a za N06, N08 i N10 crveno
+   ispiše razlog.
+6. **Ulazni podaci:** promjena nosivosti ili naloga, a raspored se odmah ponovno izračuna.
+   Neispravan unos (npr. dupli nalog) jasno se odbije. Tamna tema: ikona mjeseca gore desno.
 
-![Karta ruta](docs/karta.png)
+![Karta ruta – animacija](docs/react-karta.png)
+
+Streamlit verzija (`streamlit run app.py`) ima iste funkcije; njezine snimke su u
+`docs/raspored.png` i `docs/karta.png`.
 
 ## 2a. Što aplikacija radi
 
@@ -167,7 +181,9 @@ M04 preuzima na L3 i nosi ga do baze, a usput odradi M08 i M09 (vrhunac tereta
 
 ## 4. Testovi
 
-`pytest -v` pokreće 25 testova u `tests/test_constraints.py`, među ostalim:
+`pytest -v` pokreće 31 test: 26 u `tests/test_constraints.py` i 5 u `tests/test_api.py`
+(optimum i zamka preko API-ja, vremenska crta, neispravan unos, limit od 4 h, validacija postavki).
+Među ostalim:
 
 - nosivost i broj strojeva nikad nisu prekoračeni ni nakon jedne radnje;
 - strojevi teži od 3.500 kg nikad ne idu kamionom A; M10 uvijek putuje sam;
@@ -192,19 +208,31 @@ aplikacija za zeleni/crveni status.
 ## 5. Struktura
 
 ```
-app.py                    Streamlit web sučelje
+api/main.py               FastAPI: /api/defaults, /api/optimize (+ poslužuje izgrađeni frontend)
+frontend/                 React + TypeScript sučelje (Vite, Tailwind CSS, Motion)
+app.py                    Streamlit sučelje (rezervno, bez Node.js-a)
+optimizer/insight.py      objašnjenje zamke (zajedničko za oba sučelja)
 optimizer/data.py         ulazni podaci zadatka i provjera ulaza
 optimizer/solver.py       optimizacijski algoritam (egzaktni DP + optimalna podjela)
 optimizer/heuristic.py    heuristika za veće probleme (umetanje + lokalna pretraga)
 optimizer/validate.py     nezavisna provjera ograničenja
 optimizer/__main__.py     ispis u terminalu
 tests/test_constraints.py testovi poslovnih ograničenja
+tests/test_api.py         testovi REST API-ja
 tools/verify_ortools.py   neovisna usporedba s Google OR-Toolsom
 ```
 
-**Tehnologije:** Python (jednostavan za optimizaciju i provjeru), Streamlit (brz razvoj
-funkcionalnog web sučelja bez zasebnog frontenda), Plotly (karta), pytest. Za vlastiti
-algoritam nisu potrebne vanjske optimizacijske biblioteke; OR-Tools služi samo za provjeru.
+**Tehnologije**
+- **Backend:** Python (optimizacija i provjera), FastAPI (tipizirani REST API s automatskom
+  dokumentacijom na `/docs`), pytest. Za vlastiti algoritam nisu potrebne vanjske optimizacijske
+  biblioteke; OR-Tools služi samo za provjeru.
+- **Frontend:** React 19 + TypeScript (strogi tipovi), Vite, Tailwind CSS 4, TanStack Query
+  (ponovni izračun s debounceom, bez treperenja), Motion (animacije), Lucide ikone. Karta,
+  vremenska crta i graf tereta su vlastiti SVG (lokacije su X/Y u km, a ne GPS, pa kartografske
+  biblioteke nemaju smisla). Svijetla/tamna tema, prilagođeno mobitelu.
+- Frontend ne računa ništa poslovno: sve brojke dolaze iz istog optimizatora i validatora, pa
+  oba sučelja daju identične rezultate.
+- **Streamlit** ostaje kao rezervno sučelje koje se pokreće jednom naredbom bez Node.js-a.
 
 ## 6. Korištenje AI alata i provjera rezultata
 
@@ -240,6 +268,11 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
    - DP je ubrzan oko 5 puta (12 naloga, oba kamiona po 10 t: 12 s → 2 s), uz iste rezultate
      (testovi brute force i OR-Tools);
    - uklonjen neiskorišten kod (`distance_matrix`, `Plan.notes`) i `sys.path` hack u testovima.
+9. **React + FastAPI sučelje.** Frontend ne sadrži poslovnu logiku: sve brojke dolaze iz istog
+   optimizatora, a API testovi (`tests/test_api.py`) provjeravaju da daje iste rezultate.
+   Sučelje sam provjerio u pregledniku (Playwright): dvije uzastopne izmjene nosivosti
+   (185,8 → 187,5 km, isto kao Python), negativna koordinata, dupli nalog, limit od 4 h,
+   tamna tema i mobilni prikaz bez vodoravnog pomicanja.
 
 ## 7. Procjena utrošenog vremena
 
@@ -252,7 +285,8 @@ pisanje koda, testova i ove dokumentacije. Ni jednom rezultatu AI-ja nisam vjero
 | Dokumentacija | 0,5 h |
 | Završni pregled (provjera svih brojki, validacija ulaza, dodatni testovi) | 0,5 h |
 | Tehnički pregled: bugovi, rubni slučajevi, ubrzanje, heuristika | 1,5 h |
-| **Ukupno** | **~6 h** |
+| React + FastAPI sučelje (API, komponente, provjera u pregledniku) | 3 h |
+| **Ukupno** | **~9 h** |
 
 ## 8. Ograničenja i mogući nastavak
 
