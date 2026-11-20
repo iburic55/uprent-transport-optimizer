@@ -1,0 +1,672 @@
+<!doctype html>
+<html lang="hr">
+<head>
+<meta charset="utf-8">
+<title>UP Rent – Optimizacija prijevoza radnih strojeva: upute</title>
+<style>
+  @font-face { font-family: "Inter"; font-weight: 100 900; font-style: normal;
+    src: url("../../frontend/node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2") format("woff2");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+  @font-face { font-family: "Inter"; font-weight: 100 900; font-style: normal;
+    src: url("../../frontend/node_modules/@fontsource-variable/inter/files/inter-latin-ext-wght-normal.woff2") format("woff2");
+    unicode-range: U+0100-02AF, U+0304, U+0308, U+0329, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+
+  @page { size: A4; }
+  :root {
+    --ink: #0f172a; --body: #334155; --muted: #64748b; --line: #e2e8f0; --soft: #f8fafc;
+    --indigo: #4f46e5; --indigo-soft: #eef2ff; --amber: #f59e0b; --amber-soft: #fffbeb;
+    --green: #059669; --green-soft: #ecfdf5; --red: #e11d48; --red-soft: #fff1f2; --sky: #0284c7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Inter", system-ui, sans-serif; color: var(--body); font-size: 9.7pt; line-height: 1.5;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact; font-feature-settings: "cv11", "ss01"; }
+  body.no-cover .cover { display: none; }
+  body.only-cover > :not(.cover) { display: none !important; }
+
+  .content { padding: 0 17mm; }
+  h1, h2, h3 { color: var(--ink); letter-spacing: -0.015em; line-height: 1.2; }
+  h1 { font-size: 21pt; margin: 0 0 4mm; font-weight: 750; }
+  h2 { font-size: 13pt; margin: 5.5mm 0 2.2mm; font-weight: 700; }
+  h2, h3 { break-after: avoid; }
+  h3 { font-size: 11pt; margin: 5mm 0 1.5mm; font-weight: 650; }
+  p { margin: 0 0 2.6mm; }
+  b, strong { color: var(--ink); font-weight: 650; }
+  a { color: var(--indigo); text-decoration: none; }
+  ul, ol { margin: 0 0 3mm; padding-left: 5.5mm; } li { margin: 0.8mm 0; }
+  code, .mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", ui-monospace, monospace; font-size: 8.9pt; }
+  code { background: #f1f5f9; color: #0f172a; padding: 0.3mm 1.4mm; border-radius: 1.2mm; }
+  .kbd { display: inline-block; padding: 0.2mm 1.8mm; border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 1.4mm;
+    font-size: 8.6pt; background: #fff; color: var(--ink); font-weight: 600; }
+
+  /* poglavlja */
+  section.chapter { break-before: page; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 2mm; font-size: 8.2pt; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--indigo); margin-bottom: 2mm; }
+  .eyebrow .no { display: inline-flex; width: 6.4mm; height: 6.4mm; border-radius: 1.8mm; background: var(--indigo); color: #fff;
+    align-items: center; justify-content: center; letter-spacing: 0; font-size: 9pt; }
+  .lead { font-size: 10.6pt; color: #475569; margin-bottom: 4mm; }
+  .anchor-key { position: absolute; font-size: 2pt; color: rgba(0,0,0,0); }
+
+  /* okviri */
+  .box { border-radius: 3mm; padding: 3mm 4mm; margin: 3mm 0 3.2mm; border: 1px solid; break-inside: avoid; }
+  .box .t { font-weight: 700; color: var(--ink); margin-bottom: 1mm; display: flex; align-items: center; gap: 2mm; }
+  .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+  .tip { background: var(--green-soft); border-color: #a7f3d0; }
+  .note { background: var(--indigo-soft); border-color: #c7d2fe; }
+  .warn { background: var(--amber-soft); border-color: #fde68a; }
+  .danger { background: var(--red-soft); border-color: #fecdd3; }
+  .ico { display: inline-flex; width: 5.2mm; height: 5.2mm; border-radius: 50%; align-items: center; justify-content: center;
+    color: #fff; font-size: 8pt; font-weight: 800; flex: none; }
+  .tip .ico { background: var(--green); } .note .ico { background: var(--indigo); } .warn .ico { background: var(--amber); } .danger .ico { background: var(--red); }
+
+  /* terminal */
+  pre.term { background: #0f172a; color: #e2e8f0; border-radius: 3mm; padding: 3mm 4mm; margin: 2mm 0 3.2mm; font-size: 8.6pt;
+    line-height: 1.55; white-space: pre-wrap; break-inside: avoid; position: relative; }
+  pre.term .c { color: #64748b; } pre.term .p { color: #a5b4fc; user-select: none; } pre.term .o { color: #86efac; }
+  pre.term::before { content: attr(data-title); display: block; font-family: "Inter", sans-serif; font-size: 7.6pt; font-weight: 600;
+    letter-spacing: .06em; text-transform: uppercase; color: #94a3b8; margin-bottom: 1.6mm; }
+
+  /* koraci */
+  .steps { counter-reset: s; margin: 3mm 0 4mm; padding: 0; list-style: none; }
+  .steps > li { counter-increment: s; position: relative; padding: 0 0 2.4mm 11mm; margin: 0; break-inside: avoid; }
+  .steps > li::before { content: counter(s); position: absolute; left: 0; top: -0.4mm; width: 7mm; height: 7mm; border-radius: 50%;
+    background: var(--indigo); color: #fff; font-weight: 700; font-size: 9.5pt; display: flex; align-items: center; justify-content: center; }
+  .steps > li:not(:last-child)::after { content: ""; position: absolute; left: 3.4mm; top: 7.4mm; bottom: 0.4mm; width: 0.4mm; background: #c7d2fe; }
+  .steps .h { font-weight: 650; color: var(--ink); }
+
+  /* tablice */
+  table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 2.5mm 0 4.5mm; font-size: 9.2pt; break-inside: auto; }
+  th { text-align: left; font-weight: 650; color: var(--ink); background: var(--soft); padding: 1.7mm 2.6mm; border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line); font-size: 8.6pt; }
+  th:first-child { border-left: 1px solid var(--line); border-top-left-radius: 2mm; }
+  th:last-child { border-right: 1px solid var(--line); border-top-right-radius: 2mm; }
+  td { padding: 1.6mm 2.6mm; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td:first-child { border-left: 1px solid var(--line); } td:last-child { border-right: 1px solid var(--line); }
+  tr:last-child td:first-child { border-bottom-left-radius: 2mm; } tr:last-child td:last-child { border-bottom-right-radius: 2mm; }
+  tr { break-inside: avoid; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .pill { display: inline-block; padding: 0.2mm 2mm; border-radius: 999px; font-size: 8pt; font-weight: 600; }
+  .pill.g { background: var(--green-soft); color: var(--green); } .pill.r { background: var(--red-soft); color: var(--red); }
+  .pill.i { background: var(--indigo-soft); color: var(--indigo); } .pill.a { background: var(--amber-soft); color: #b45309; }
+
+  /* slike */
+  figure { margin: 2.5mm 0 4mm; break-inside: avoid; }
+  figure img { width: 100%; display: block; border-radius: 2.6mm; border: 1px solid var(--line); box-shadow: 0 2mm 6mm rgba(15,23,42,.06); }
+  figcaption { font-size: 8.4pt; color: var(--muted); margin-top: 1.8mm; }
+  .legend { list-style: none; padding: 0; margin: 2.5mm 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.4mm 5mm; font-size: 9pt; }
+  .legend.one { grid-template-columns: 1fr; }
+  .legend li { display: flex; gap: 2.2mm; margin: 0; align-items: flex-start; }
+  .legend .n { flex: none; width: 5.2mm; height: 5.2mm; border-radius: 50%; background: var(--red); color: #fff; font-size: 7.8pt;
+    font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-top: 0.3mm; }
+
+  /* kartice brojki */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3mm; margin: 4mm 0 5mm; }
+  .stat { border: 1px solid var(--line); border-radius: 3mm; padding: 3.2mm 3.6mm; background: #fff; break-inside: avoid; }
+  .stat .v { font-size: 17pt; font-weight: 750; color: var(--ink); letter-spacing: -0.02em; line-height: 1.1; }
+  .stat .l { font-size: 8.2pt; color: var(--muted); margin-top: 1mm; }
+  .stat.accent { border-top: 1.2mm solid var(--indigo); } .stat.amber { border-top: 1.2mm solid var(--amber); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .card { border: 1px solid var(--line); border-radius: 3mm; padding: 3.6mm 4mm; break-inside: avoid; }
+  .card h3 { margin-top: 0; }
+
+  /* sadržaj */
+  .toc { list-style: none; padding: 0; margin: 4mm 0 0; }
+  .toc li { margin: 0; }
+  .toc a { display: flex; align-items: baseline; gap: 2mm; padding: 2.2mm 0; border-bottom: 1px solid var(--line); color: var(--ink); }
+  .toc .no { width: 8mm; font-weight: 700; color: var(--indigo); flex: none; }
+  .toc .tt { font-weight: 600; } .toc .sub { color: var(--muted); font-size: 8.8pt; margin-left: 1.5mm; font-weight: 400; }
+  .toc .dots { flex: 1; border-bottom: 1px dotted #cbd5e1; transform: translateY(-1mm); }
+  .toc .pg { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; width: 8mm; text-align: right; }
+
+  /* naslovnica */
+  .cover { width: 210mm; height: 297mm; position: relative; overflow: hidden; color: #fff;
+    background: radial-gradient(130mm 110mm at 20% 18%, #4338ca 0%, rgba(67,56,202,0) 70%),
+                radial-gradient(120mm 120mm at 95% 85%, #7c3aed 0%, rgba(124,58,237,0) 65%), #0b1120; }
+  .cover .in { position: absolute; inset: 24mm 20mm; display: flex; flex-direction: column; }
+  .cover .logo { width: 18mm; height: 18mm; border-radius: 5mm; background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    display: flex; align-items: center; justify-content: center; box-shadow: 0 6mm 18mm rgba(99,102,241,.45); }
+  .cover .kicker { margin-top: 14mm; font-size: 9pt; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #a5b4fc; }
+  .cover h1 { color: #fff; font-size: 34pt; line-height: 1.05; margin: 4mm 0 5mm; letter-spacing: -0.03em; }
+  .cover .sub { font-size: 13pt; color: #cbd5e1; max-width: 150mm; line-height: 1.5; }
+  .cover .big { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; }
+  .cover .big > div { border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); border-radius: 4mm; padding: 5mm; }
+  .cover .big .v { font-size: 22pt; font-weight: 750; letter-spacing: -0.02em; }
+  .cover .big .l { font-size: 8.6pt; color: #cbd5e1; margin-top: 1mm; }
+  .cover .meta { margin-top: 9mm; display: flex; justify-content: space-between; font-size: 8.6pt; color: #94a3b8;
+    border-top: 1px solid rgba(255,255,255,.14); padding-top: 4mm; }
+  .cover .route { position: absolute; right: 8mm; top: 128mm; width: 112mm; opacity: .42; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ NASLOVNICA -->
+<div class="cover">
+  <svg class="route" viewBox="0 0 400 300" fill="none">
+    <polyline points="40,250 120,180 200,210 260,120 340,60" stroke="#a5b4fc" stroke-width="3" stroke-dasharray="2 8" stroke-linecap="round"/>
+    <polyline points="40,250 90,120 180,90 300,150 360,240" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" opacity=".8"/>
+    <g fill="#0b1120" stroke="#fff" stroke-width="3"><circle cx="40" cy="250" r="8"/><circle cx="120" cy="180" r="6"/><circle cx="200" cy="210" r="6"/>
+      <circle cx="260" cy="120" r="6"/><circle cx="340" cy="60" r="6"/><circle cx="90" cy="120" r="6"/><circle cx="180" cy="90" r="6"/>
+      <circle cx="300" cy="150" r="6"/><circle cx="360" cy="240" r="6"/></g>
+  </svg>
+  <div class="in">
+    <div class="logo"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg></div>
+    <div class="kicker">Korisničke i tehničke upute</div>
+    <h1>Optimizacija prijevoza<br>radnih strojeva</h1>
+    <div class="sub">Web-aplikacija koja transportne naloge raspoređuje na kamione, određuje redoslijed
+      preuzimanja i isporuka te minimizira ukupnu kilometražu – uz nosivost, broj strojeva,
+      dnevno radno vrijeme i obavezan povratak u bazu.</div>
+    <div class="big">
+      <div><div class="v">200,1 km</div><div class="l">ukupno, dokazani optimum</div></div>
+      <div><div class="v">10 / 10</div><div class="l">izvršenih naloga</div></div>
+      <div><div class="v">≤ 9 h</div><div class="l">rad svakog vozača (s utovarom/istovarom)</div></div>
+    </div>
+    <div class="meta"><span>UP Rent · prototip</span><span>Python · FastAPI · React</span><span>Verzija 1.0 · studeni 2026.</span></div>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- ============================================================ SADRŽAJ -->
+<section>
+  <div class="eyebrow">Pregled</div>
+  <h1>Sadržaj</h1>
+  <p class="lead">Upute su pisane tako da se svaki dio može čitati zasebno. Ako aplikaciju pokrećete prvi put,
+    krenite od <b>poglavlja 2 – Brzi start</b>; za rad u sučelju dovoljna su poglavlja 4 i 5.</p>
+  <ul class="toc">
+    <li><a href="#ukratko" data-toc="ukratko"><span class="no">1</span><span class="tt">Ukratko</span><span class="sub">što aplikacija radi i ključni rezultati</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#start" data-toc="start"><span class="no">2</span><span class="tt">Brzi start</span><span class="sub">pokretanje u tri koraka</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#instalacija" data-toc="instalacija"><span class="no">3</span><span class="tt">Instalacija detaljno</span><span class="sub">Windows, macOS, Linux, razvojni način</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#sucelje" data-toc="sucelje"><span class="no">4</span><span class="tt">Vodič kroz sučelje</span><span class="sub">dijelovi zaslona</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#kartice" data-toc="kartice"><span class="no">5</span><span class="tt">Kartice korak po korak</span><span class="sub">Raspored, Karta, Scenariji, Ulazni podaci</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#zadaci" data-toc="zadaci"><span class="no">6</span><span class="tt">Česti zadaci</span><span class="sub">recepti za svakodnevni rad</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#logika" data-toc="logika"><span class="no">7</span><span class="tt">Kako radi optimizacija</span><span class="sub">model, algoritam, pravila izračuna</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#pravila" data-toc="pravila"><span class="no">8</span><span class="tt">Poslovna pravila i provjera</span><span class="sub">validator, testovi, OR-Tools</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#problemi" data-toc="problemi"><span class="no">9</span><span class="tt">Rješavanje problema</span><span class="sub">simptom → uzrok → rješenje</span><span class="dots"></span><span class="pg">–</span></a></li>
+    <li><a href="#dodatak" data-toc="dodatak"><span class="no">10</span><span class="tt">Dodatak</span><span class="sub">REST API, struktura projekta, pojmovnik</span><span class="dots"></span><span class="pg">–</span></a></li>
+  </ul>
+
+  <h2 style="margin-top:10mm">Kako čitati ove upute</h2>
+  <div class="grid2">
+    <div class="box tip" style="margin:0"><div class="t"><span class="ico">✓</span>Savjet</div><p>Prečac ili način da nešto napravite brže.</p></div>
+    <div class="box note" style="margin:0"><div class="t"><span class="ico">i</span>Napomena</div><p>Dodatno objašnjenje ili pozadina.</p></div>
+    <div class="box warn" style="margin:0"><div class="t"><span class="ico">!</span>Važno</div><p>Nešto što utječe na rezultat – vrijedi pročitati.</p></div>
+    <div class="card" style="display:flex;gap:3mm;align-items:center"><span class="legend" style="margin:0"><span class="n" style="width:6mm;height:6mm">1</span></span>
+      <p style="margin:0">Crveni brojevi na snimkama zaslona odgovaraju legendi ispod slike.</p></div>
+  </div>
+  <pre class="term" data-title="Naredbe u terminalu" style="margin-top:4mm"><span class="p">$</span> naredba-koju-upisujete      <span class="c"># komentar (ne upisuje se)</span>
+<span class="o">ispis koji očekujete</span></pre>
+  <p style="font-size:8.9pt;color:var(--muted)">Znak <code>$</code> (ili <code>&gt;</code> na Windowsu) označava početak naredbe i ne upisuje se. Brojke u
+    uputama odnose se na podatke iz zadatka; nakon izmjene podataka u aplikaciji bit će drukčije.</p>
+</section>
+
+<!-- ============================================================ 1 UKRATKO -->
+<section class="chapter" id="ukratko">
+  <span class="anchor-key">TOCMARKukratkoTOCMARK</span>
+  <div class="eyebrow"><span class="no">1</span>Ukratko</div>
+  <h1>Što aplikacija radi</h1>
+  <p class="lead">Aplikacija rješava zadatak prijevoza 10 radnih strojeva između 10 lokacija pomoću dva kamiona:
+    odlučuje <b>koji kamion vozi koji stroj</b>, <b>kojim redoslijedom</b> obilazi lokacije i kako
+    <b>smanjiti ukupnu kilometražu</b>, a da pritom ne prekrši nijedno poslovno pravilo.</p>
+
+  <div class="stats">
+    <div class="stat accent"><div class="v">200,1 km</div><div class="l">ukupna kilometraža (dokazani optimum)</div></div>
+    <div class="stat accent"><div class="v">10 / 10</div><div class="l">izvršenih transportnih naloga</div></div>
+    <div class="stat"><div class="v">37,2 km</div><div class="l">Kamion A · 1 nalog · 1:17 h</div></div>
+    <div class="stat amber"><div class="v">162,9 km</div><div class="l">Kamion B · 9 naloga · 8:43 h</div></div>
+  </div>
+
+  <h2>Ulazni podaci zadatka</h2>
+  <div class="grid2">
+    <div class="card">
+      <h3>Vozni park</h3>
+      <table style="margin:0">
+        <tr><th>Vozilo</th><th class="num">Nosivost</th><th class="num">Max strojeva</th></tr>
+        <tr><td>Kamion A</td><td class="num">3.500 kg</td><td class="num">2</td></tr>
+        <tr><td>Kamion B</td><td class="num">10.000 kg</td><td class="num">3</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Pravila rada</h3>
+      <ul style="margin:0">
+        <li>oba kamiona polaze iz baze <b>L0</b> i moraju se vratiti</li>
+        <li>vozač radi najviše <b>9 h</b> dnevno</li>
+        <li>svaki utovar i istovar traje <b>20 min</b></li>
+        <li>prosječna brzina <b>60 km/h</b>; euklidska udaljenost, zaokružena na 0,1 km po dionici</li>
+      </ul>
+    </div>
+  </div>
+
+  <h2>Što aplikacija jamči</h2>
+  <table>
+    <tr><th style="width:42%">Zahtjev</th><th>Kako je ispunjen</th></tr>
+    <tr><td>Nosivost i broj strojeva <b>u svakom trenutku</b></td><td>Algoritam nedopuštena stanja ni ne generira; validator ih ponovno provjerava nakon svake radnje.</td></tr>
+    <tr><td>Preuzimanje prije isporuke, <b>isti kamion</b></td><td>Ugrađeno u model stanja (čeka → na kamionu → isporučen).</td></tr>
+    <tr><td>Najmanja ukupna kilometraža</td><td>Egzaktna optimizacija; rezultat potvrđen Google OR-Toolsom i brute-forceom.</td></tr>
+    <tr><td>Jasno upozorenje za neizvršive naloge</td><td>Crveni okvir s popisom naloga i razlogom (preteško / nema dovoljno radnog vremena).</td></tr>
+  </table>
+
+  <div class="box warn">
+    <div class="t"><span class="ico">!</span>Zamka zadatka – zašto rezultat nije 182,2 km</div>
+    <p>Najkraći mogući raspored ima <b>182,2 km</b>: sve vozi Kamion B. No 10 naloga znači 20 radnji × 20 min
+      = <b>6 h 40 min</b> utovara/istovara, uz 3 h 2 min vožnje – ukupno <b>9 h 42 min</b>, što je preko limita od 9 h.
+      Optimizator zato nalog <b>N03 (L9 → L4)</b> daje Kamionu A (+17,9 km) i oba vozača završavaju na vrijeme.
+      Detalji su u poglavlju 7.</p>
+  </div>
+</section>
+
+<!-- ============================================================ 2 BRZI START -->
+<section class="chapter" id="start">
+  <span class="anchor-key">TOCMARKstartTOCMARK</span>
+  <div class="eyebrow"><span class="no">2</span>Brzi start</div>
+  <h1>Pokretanje u tri koraka</h1>
+  <p class="lead">Potrebni su <b>Python 3.10+</b> i <b>Node.js 20.19+</b> (preporuka 22 LTS). Naredbe se upisuju u
+    terminal (Windows: PowerShell ili Command Prompt; macOS/Linux: Terminal) iz mape projekta.</p>
+
+  <ol class="steps">
+    <li><div class="h">Preuzmite projekt i instalirajte Python pakete</div>
+      <pre class="term" data-title="Terminal"><span class="p">$</span> git clone https://github.com/iburic55/uprent-transport-optimizer.git
+<span class="p">$</span> cd uprent-transport-optimizer
+<span class="p">$</span> pip install -r requirements.txt</pre></li>
+    <li><div class="h">Izgradite web sučelje (samo prvi put i nakon izmjena frontenda)</div>
+      <pre class="term" data-title="Terminal"><span class="p">$</span> cd frontend
+<span class="p">$</span> npm install
+<span class="p">$</span> npm run build
+<span class="p">$</span> cd ..</pre></li>
+    <li><div class="h">Pokrenite aplikaciju</div>
+      <pre class="term" data-title="Terminal"><span class="p">$</span> uvicorn api.main:app
+<span class="o">INFO:     Uvicorn running on http://127.0.0.1:8000</span></pre>
+      U pregledniku otvorite <b>http://localhost:8000</b>. Raspored se izračuna odmah – na vrhu trebate vidjeti
+      <b>200,1 km</b> i <b>10 / 10</b> te zelene oznake „Dokazani optimum” i „Ograničenja zadovoljena”.
+      Zaustavljanje: <span class="kbd">Ctrl</span> + <span class="kbd">C</span>; ponovno pokretanje istom naredbom (koraci 1 i 2 se ne ponavljaju).</li>
+  </ol>
+
+  <div class="box tip">
+    <div class="t"><span class="ico">✓</span>Provjera da je sve ispravno</div>
+    <pre class="term" data-title="Terminal" style="margin:1.5mm 0"><span class="p">$</span> pytest -q
+<span class="o">31 passed</span>
+<span class="p">$</span> python -m optimizer          <span class="c"># isti raspored ispisan u terminalu</span></pre>
+  </div>
+
+
+  <h2>Što je gdje</h2>
+  <table>
+    <tr><th>Adresa</th><th>Namjena</th></tr>
+    <tr><td><code>http://localhost:8000</code></td><td>Web aplikacija (React sučelje)</td></tr>
+    <tr><td><code>http://localhost:8000/docs</code></td><td>Interaktivna dokumentacija REST API-ja (Swagger)</td></tr>
+    <tr><td><code>docs/demo.mp4</code></td><td>Video demonstracija s titlom za svaki korak (4:45)</td></tr>
+  </table>
+</section>
+
+<!-- ============================================================ 3 INSTALACIJA -->
+<section class="chapter" id="instalacija">
+  <span class="anchor-key">TOCMARKinstalacijaTOCMARK</span>
+  <div class="eyebrow"><span class="no">3</span>Instalacija detaljno</div>
+  <h1>Instalacija i načini pokretanja</h1>
+
+  <h2>Preduvjeti</h2>
+  <table>
+    <tr><th>Alat</th><th>Verzija</th><th>Provjera</th><th>Preuzimanje</th></tr>
+    <tr><td>Python</td><td>3.10 ili novija</td><td><code>python --version</code></td><td>python.org</td></tr>
+    <tr><td>Node.js (s npm-om)</td><td>20.19+ ili 22 LTS</td><td><code>node -v</code></td><td>nodejs.org</td></tr>
+    <tr><td>Git (neobavezno)</td><td>bilo koja</td><td><code>git --version</code></td><td>git-scm.com – ili preuzmite ZIP s GitHuba</td></tr>
+  </table>
+
+  <h2>Preporučeno: virtualno okruženje za Python</h2>
+  <p>Paketi se tada instaliraju samo za ovaj projekt i ne miješaju se s ostatkom sustava.</p>
+  <div class="grid2">
+    <pre class="term" data-title="Windows (PowerShell)"><span class="p">&gt;</span> py -m venv .venv
+<span class="p">&gt;</span> .venv\Scripts\Activate.ps1
+<span class="p">&gt;</span> pip install -r requirements.txt</pre>
+    <pre class="term" data-title="macOS / Linux"><span class="p">$</span> python3 -m venv .venv
+<span class="p">$</span> source .venv/bin/activate
+<span class="p">$</span> pip install -r requirements.txt</pre>
+  </div>
+  <p style="font-size:8.8pt;color:var(--muted)">Windows: ako PowerShell odbije aktivaciju, jednom pokrenite
+    <code>Set-ExecutionPolicy -Scope CurrentUser RemoteSigned</code>; umjesto <code>python</code> često se koristi <code>py</code>.</p>
+
+  <h2>Razvojni način (automatsko osvježavanje)</h2>
+  <p>Za izmjene koda pokrenite backend i frontend u dva terminala; promjene se vide odmah, bez ponovnog builda.</p>
+  <div class="grid2">
+    <pre class="term" data-title="Terminal 1 – backend"><span class="p">$</span> uvicorn api.main:app --reload</pre>
+    <pre class="term" data-title="Terminal 2 – frontend"><span class="p">$</span> cd frontend
+<span class="p">$</span> npm run dev
+<span class="o">➜ Local: http://localhost:5173</span></pre>
+  </div>
+  <p>U razvojnom načinu aplikacija je na <b>http://localhost:5173</b>; Vite zahtjeve prema <code>/api</code>
+    automatski prosljeđuje backendu na portu 8000.</p>
+
+  <div class="grid2">
+    <div>
+      <h2>Rezervno sučelje bez Node.js-a</h2>
+      <p>Iste funkcije (isti optimizator i validator) u jednostavnijem Streamlit sučelju:</p>
+      <pre class="term" data-title="Terminal"><span class="p">$</span> streamlit run app.py
+<span class="o">→ http://localhost:8501</span></pre>
+    </div>
+    <div>
+      <h2>Neovisna provjera (neobavezno)</h2>
+      <p>Usporedba s Google OR-Toolsom – mora dati iste kilometraže:</p>
+      <pre class="term" data-title="Terminal"><span class="p">$</span> pip install ortools
+<span class="p">$</span> python tools/verify_ortools.py
+<span class="o">DP = 200.1 km | OR-Tools = 200.1 km
+DP = 182.2 km | OR-Tools = 182.2 km</span></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ 4 SUČELJE -->
+<section class="chapter" id="sucelje">
+  <span class="anchor-key">TOCMARKsuceljeTOCMARK</span>
+  <div class="eyebrow"><span class="no">4</span>Vodič kroz sučelje</div>
+  <h1>Dijelovi zaslona</h1>
+  <p class="lead">Sučelje ima tri razine: <b>postavke</b> lijevo, <b>sažetak rezultata</b> na vrhu i
+    <b>kartice</b> s detaljima ispod. Svaka promjena postavki ili podataka odmah pokreće novi izračun.</p>
+  <figure>
+    <img src="img/pregled.png" alt="Pregled sučelja s numeriranim oznakama">
+    <ul class="legend">
+      <li><span class="n">1</span><span><b>Zaglavlje</b> – naziv, oznake stanja, poveznica na API dokumentaciju i prekidač teme.</span></li>
+      <li><span class="n">2</span><span><b>Postavke</b> – radno vrijeme, trajanje utovara/istovara, brzina i tumačenje limita.</span></li>
+      <li><span class="n">3</span><span><b>Ukupna kilometraža</b> – zbroj oba kamiona; ispod je teoretski minimum.</span></li>
+      <li><span class="n">4</span><span><b>Kartica kamiona</b> – km, broj naloga, radno vrijeme i iskorištenost limita (traka).</span></li>
+      <li><span class="n">5</span><span><b>„Zašto ne 182,2 km?”</b> – objašnjenje zamke s 9 h i premještenih naloga.</span></li>
+      <li><span class="n">6</span><span><b>Kartice</b> – Raspored, Karta, Scenariji, Ulazni podaci.</span></li>
+      <li><span class="n">7</span><span><b>Oznake stanja</b> – „Dokazani optimum” i „Ograničenja zadovoljena” (nezavisni validator).</span></li>
+    </ul>
+  </figure>
+
+  <h2>Postavke</h2>
+  <table>
+    <tr><th>Postavka</th><th class="num">Zadano</th><th>Značenje</th></tr>
+    <tr><td>Radno vrijeme vozača</td><td class="num">9 h</td><td>Dnevni limit po kamionu (1–24 h).</td></tr>
+    <tr><td>Utovar / istovar</td><td class="num">20 min</td><td>Trajanje svakog pojedinog utovara i istovara.</td></tr>
+    <tr><td>Prosječna brzina</td><td class="num">60 km/h</td><td>Pretvara kilometre u vrijeme vožnje.</td></tr>
+    <tr><td>Utovar/istovar ulazi u limit</td><td class="num">uključeno</td><td>Uključeno: vožnja + radnje ≤ limit (konzervativno). Isključeno: limit vrijedi samo za vožnju.</td></tr>
+  </table>
+  <div class="box tip"><div class="t"><span class="ico">✓</span>Savjet</div>
+    <p>Vrijednost možete upisati u polje desno od naziva ili povući klizač. Gumb <b>„Vrati zadane podatke”</b>
+      postaje aktivan čim nešto promijenite.</p></div>
+</section>
+
+<!-- ============================================================ 5 KARTICE -->
+<section class="chapter" id="kartice">
+  <span class="anchor-key">TOCMARKkarticeTOCMARK</span>
+  <div class="eyebrow"><span class="no">5</span>Kartice korak po korak</div>
+  <h1>Raspored</h1>
+  <p class="lead">Kartica <b>Raspored</b> odgovara na pitanje „tko, kamo i kada”: radni dan oba kamiona na
+    zajedničkoj vremenskoj osi i detaljan plan svakog kamiona.</p>
+
+  <h2>Radni dan</h2>
+  <figure>
+    <img src="img/radni-dan.png" alt="Vremenska crta radnog dana">
+    <ul class="legend">
+      <li><span class="n">1</span><span><b>Redak kamiona</b> – vožnja (boja kamiona), utovar (zeleno), istovar (plavo).</span></li>
+      <li><span class="n">2</span><span><b>Crvena crta</b> – dnevni limit radnog vremena (9 h).</span></li>
+      <li><span class="n">3</span><span><b>Opis segmenta</b> – prijeđite mišem preko segmenta za radnju i vrijeme.</span></li>
+      <li><span class="n">4</span><span><b>Legenda</b> boja.</span></li>
+    </ul>
+  </figure>
+
+  <h2>Plan pojedinog kamiona</h2>
+  <figure>
+    <img src="img/kamion.png" alt="Kartica Kamiona B">
+    <ul class="legend">
+      <li><span class="n">1</span><span><b>Sažetak</b> – km, broj naloga, vožnja + radnje = ukupno vrijeme, vrh tereta.</span></li>
+      <li><span class="n">2</span><span><b>Redoslijed lokacija</b> – od baze L0 do povratka u L0.</span></li>
+      <li><span class="n">3</span><span><b>Graf tereta</b> – teret nakon svake radnje; isprekidana crta je nosivost.</span></li>
+      <li><span class="n">4</span><span><b>Tablica radnji</b> – lokacija, radnja, nalog, stroj, dionica i ukupno km, teret i broj strojeva nakon radnje, vrijeme od polaska.</span></li>
+    </ul>
+  </figure>
+
+  <h1 style="margin-top:6mm; break-before: page">Karta</h1>
+  <p>Prikazuje rute oba kamiona na simuliranim koordinatama (X/Y u km). Strelice pokazuju smjer vožnje.
+    Ako dva kamiona voze istom dionicom, linije su malo razmaknute da se obje vide.</p>
+  <figure>
+    <img src="img/karta.png" alt="Karta ruta tijekom animacije">
+    <ul class="legend">
+      <li><span class="n">1</span><span><b>Pokreni vožnju / Pauza</b> – animira cijeli radni dan (≈ 14 s).</span></li>
+      <li><span class="n">2</span><span><b>Ispočetka</b> – animacija od 0:00.</span></li>
+      <li><span class="n">3</span><span><b>Sat i klizač</b> – vrijeme od polaska; klizačem se ide na bilo koji trenutak.</span></li>
+      <li><span class="n">4</span><span><b>Stanje kamiona</b> – trenutna radnja i teret.</span></li>
+      <li><span class="n">5</span><span><b>Oznaka kamiona</b> na karti; prijeđene dionice su pune, buduće prigušene.</span></li>
+    </ul>
+  </figure>
+
+  <h1 style="margin-top:6mm; break-before: page">Scenariji</h1>
+  <p>Ista ulazna data, tri tumačenja dnevnog limita. Korisno za objašnjenje zašto je rezultat
+    200,1 km, a ne teoretskih 182,2 km.</p>
+  <figure>
+    <img src="img/scenariji.png" alt="Usporedba scenarija">
+    <ul class="legend one">
+      <li><span class="n">1</span><span><b>Aktivni scenarij</b> – odgovara trenutnim postavkama.</span></li>
+      <li><span class="n">2</span><span><b>Samo vožnja ≤ limit</b> – ako se u 9 h broji samo vožnja, 182,2 km je dopušten.</span></li>
+      <li><span class="n">3</span><span><b>„krši 9 h”</b> – teoretski minimum prekoračuje radno vrijeme (Kamion B 9:42 h).</span></li>
+    </ul>
+  </figure>
+
+  <h1 style="margin-top:6mm; break-before: page">Ulazni podaci</h1>
+  <p>Sve četiri tablice iz zadatka mogu se mijenjati izravno u sučelju; raspored se preračuna nakon svake izmjene
+    (s kratkom odgodom od 0,3 s dok tipkate).</p>
+  <figure>
+    <img src="img/ulazni.png" alt="Uređivanje ulaznih podataka">
+    <ul class="legend">
+      <li><span class="n">1</span><span><b>Ćelija za unos</b> – kliknite i upišite; brojevi prihvaćaju i negativne vrijednosti (koordinate).</span></li>
+      <li><span class="n">2</span><span><b>Dodaj redak</b> – novi kamion, stroj, lokacija ili nalog s predloženom oznakom.</span></li>
+      <li><span class="n">3</span><span><b>Obriši redak</b> – ikona koša pojavi se kad mišem prijeđete preko retka.</span></li>
+      <li><span class="n">4</span><span><b>Padajući izbornik</b> – stroj i lokacije naloga biraju se s popisa.</span></li>
+      <li><span class="n">5</span><span><b>Težina</b> – automatski iz tablice strojeva.</span></li>
+    </ul>
+  </figure>
+</section>
+
+<!-- ============================================================ 6 ČESTI ZADACI -->
+<section class="chapter" id="zadaci">
+  <span class="anchor-key">TOCMARKzadaciTOCMARK</span>
+  <div class="eyebrow"><span class="no">6</span>Česti zadaci</div>
+  <h1>Recepti za svakodnevni rad</h1>
+
+  <div class="grid2">
+    <div class="card"><h3>Promijeniti radno vrijeme</h3>
+      <ol class="steps" style="margin:2mm 0 0">
+        <li>U <b>Postavkama</b> upišite novu vrijednost uz „Radno vrijeme vozača”.</li>
+        <li>Pogledajte sažetak na vrhu – izračun je odmah ažuriran.</li></ol></div>
+    <div class="card"><h3>Dodati novi nalog</h3>
+      <ol class="steps" style="margin:2mm 0 0">
+        <li>Kartica <b>Ulazni podaci</b> → tablica <b>Transportni nalozi</b> → <b>Dodaj redak</b>.</li>
+        <li>Odaberite stroj, preuzimanje i isporuku iz izbornika.</li></ol></div>
+    <div class="card"><h3>Dodati kamion ili lokaciju</h3>
+      <ol class="steps" style="margin:2mm 0 0">
+        <li><b>Dodaj redak</b> u tablici Vozni park ili Lokacije.</li>
+        <li>Upišite nosivost i broj mjesta, odnosno X i Y koordinatu u km.</li></ol></div>
+    <div class="card"><h3>Vratiti početno stanje</h3>
+      <ol class="steps" style="margin:2mm 0 0">
+        <li>Kliknite <b>Vrati zadane podatke</b> u Postavkama.</li>
+        <li>Vraćaju se podaci i postavke iz zadatka (200,1 km).</li></ol></div>
+  </div>
+
+  <h2>Kad nalog nije moguće izvršiti</h2>
+  <p>Ako ograničenja ne dopuštaju sve naloge, aplikacija izvrši <b>najviše mogućih</b> uz najmanje km, a ostale
+    navede u crvenom okviru s razlogom. Primjer: radno vrijeme 4 h.</p>
+  <figure>
+    <img src="img/neizvrsivo.png" alt="Upozorenje o neizvršivim nalozima">
+    <ul class="legend">
+      <li><span class="n">1</span><span>Radno vrijeme postavljeno na <b>4 h</b>.</span></li>
+      <li><span class="n">2</span><span>Izvršeno 7 od 10 naloga (171,6 km); <b>N06, N08 i N10</b> nemaju dovoljno radnog vremena.</span></li>
+    </ul>
+  </figure>
+  <table>
+    <tr><th>Razlog u okviru</th><th>Značenje</th><th>Što učiniti</th></tr>
+    <tr><td>„… preteži od nosivosti svih kamiona”</td><td>Stroj je teži od svakog kamiona.</td><td>Dodati kamion veće nosivosti ili ispraviti težinu.</td></tr>
+    <tr><td>„… izvediv sam za sebe, ali uz ostale naloge nema dovoljno radnog vremena”</td><td>Nalog stane, ali ne i uz ostale u istom danu.</td><td>Produžiti radno vrijeme, dodati kamion ili prebaciti nalog na drugi dan.</td></tr>
+    <tr><td>„Ni jedan kamion ne može odraditi ovaj nalog unutar … h”</td><td>Ni sam nalog (baza → preuzimanje → isporuka → baza) ne stane u limit.</td><td>Produžiti radno vrijeme ili provjeriti lokacije.</td></tr>
+    <tr><td>„Nepoznata lokacija …”</td><td>Lokacija naloga ne postoji u tablici Lokacije.</td><td>Dodati lokaciju ili odabrati postojeću.</td></tr>
+  </table>
+
+  <h2>Neispravan unos</h2>
+  <p>Podaci koji nemaju smisla (dupla oznaka, težina ili nosivost ≤ 0, ista lokacija preuzimanja i isporuke,
+    nepostojeći stroj, nedostaje baza L0) se ne računaju – aplikacija prikaže što treba ispraviti.</p>
+  <figure>
+    <img src="img/greska.png" alt="Poruka o neispravnom unosu">
+    <ul class="legend one"><li><span class="n">1</span><span>Primjer: oznaka <b>N01</b> upisana dvaput. Nakon ispravka raspored se odmah izračuna.</span></li></ul>
+  </figure>
+
+  <h2>Tamna tema</h2>
+  <p>Ikona mjeseca u zaglavlju uključuje tamnu temu (ikona sunca vraća svijetlu); izbor se pamti u pregledniku.
+    Sučelje je prilagođeno i mobitelu.</p>
+  <figure><img src="img/tamna.png" alt="Tamna tema"></figure>
+</section>
+
+<!-- ============================================================ 7 LOGIKA -->
+<section class="chapter" id="logika">
+  <span class="anchor-key">TOCMARKlogikaTOCMARK</span>
+  <div class="eyebrow"><span class="no">7</span>Kako radi optimizacija</div>
+  <h1>Model i algoritam</h1>
+  <p class="lead">Problem je <b>Pickup and Delivery Vehicle Routing Problem</b> s kapacitetom (kg i broj
+    strojeva) i vremenskim ograničenjem. Općenito je NP-težak, ali za ovu veličinu (10 naloga, 2 kamiona)
+    rješava se <b>egzaktno</b> – rezultat je dokazani optimum, a ne procjena.</p>
+
+  <h2>Korak 1 – najkraća ruta za svaki kamion i svaki podskup naloga</h2>
+  <p>Dinamičko programiranje nad stanjima. <b>Stanje</b> = status svakog naloga (čeka / na kamionu /
+    isporučen) + trenutna lokacija kamiona. Iz stanja su dopuštene samo dvije radnje:</p>
+  <ul>
+    <li><b>preuzeti</b> nalog koji čeka – samo ako stroj stane po težini i broju mjesta;</li>
+    <li><b>isporučiti</b> nalog koji je na kamionu.</li>
+  </ul>
+  <p>Zato nosivost i redoslijed <b>ne mogu</b> biti prekršeni. Prazan kamion zatvara rutu povratkom u bazu, pa se za
+    svaki podskup naloga dobije najkraća ruta baza → … → baza; stanja preko radnog vremena odmah se odbacuju.</p>
+
+  <h2>Korak 2 – podjela naloga između kamiona</h2>
+  <p>Kamion A smije voziti samo strojeve ≤ 3.500 kg (N01–N05), Kamion B sve. Od svih kombinacija
+    <b>disjunktnih</b> podskupova koje stanu u radno vrijeme bira se ona s:</p>
+  <ol><li><b>najviše izvršenih naloga</b> (prioritet: ništa ne ostaje neisporučeno), zatim</li>
+    <li><b>najmanjom ukupnom kilometražom</b>.</li></ol>
+  <p style="font-size:8.9pt;color:var(--muted)">Ako neki kamion ima više od 12 mogućih naloga (3<sup>n</sup> stanja postaje presporo),
+    koristi se <b>heuristika</b> (najjeftinije umetanje + lokalna pretraga + više početaka); aplikacija to označi kao
+    „Heuristički raspored”, a validator provjerava i takve planove.</p>
+
+  <h2>Pravila izračuna</h2>
+  <table>
+    <tr><th style="width:22%">Veličina</th><th>Pravilo</th></tr>
+    <tr><td>Udaljenost</td><td>Euklidska, zaokružena na 0,1 km <b>po dionici</b>; interno u desetinkama km (cijeli brojevi), pa se zaokruživanje ne gomila.</td></tr>
+    <tr><td>Vrijeme</td><td>Vožnja = km / 60 km/h; svaki utovar i istovar 20 min (više radnji na istoj lokaciji ne dodaje km).</td></tr>
+    <tr><td>Dnevni limit</td><td>Zadano: vožnja + utovar/istovar ≤ 9 h (konzervativno tumačenje; prekidač u postavkama).</td></tr>
+  </table>
+
+  <h2>Zamka s 9 h u brojkama</h2>
+  <table>
+    <tr><th>Scenarij</th><th class="num">Ukupno</th><th>Raspored</th><th>Status</th></tr>
+    <tr><td>Bez vremenskog ograničenja</td><td class="num">182,2 km</td><td>sve Kamion B, 9 h 42 min</td><td><span class="pill r">krši 9 h</span></td></tr>
+    <tr><td>Limit 9 h, samo vožnja</td><td class="num">182,2 km</td><td>isto (vožnja je samo 3 h 2 min)</td><td><span class="pill g">dopušteno</span></td></tr>
+    <tr><td><b>Limit 9 h, vožnja + radnje (zadano)</b></td><td class="num"><b>200,1 km</b></td><td>N03 → Kamion A (+17,9 km): A 1:17 h · B 8:43 h</td><td><span class="pill g">dopušteno</span></td></tr>
+  </table>
+
+
+
+</section>
+
+<!-- ============================================================ 8 PRAVILA -->
+<section class="chapter" id="pravila">
+  <span class="anchor-key">TOCMARKpravilaTOCMARK</span>
+  <div class="eyebrow"><span class="no">8</span>Poslovna pravila i provjera</div>
+  <h1>Kako se zna da je rezultat ispravan</h1>
+  <p class="lead">Rezultatu optimizatora ne vjeruje se na riječ: svaki raspored provjerava <b>nezavisni
+    validator</b> (zeleni/crveni status u zaglavlju), a ponašanje osigurava <b>31 automatski test</b>.</p>
+
+  <table>
+    <tr><th style="width:30%">Poslovno pravilo</th><th>Kako je osigurano</th><th style="width:28%">Test (primjer)</th></tr>
+    <tr><td>Nosivost i broj strojeva u svakom trenutku</td><td>Nedopuštena stanja se ne generiraju; validator provjerava teret nakon svake radnje i prikazane vrijednosti.</td><td><code>test_nosivost_i_broj_strojeva…</code></td></tr>
+    <tr><td>Strojevi &gt; 3.500 kg ne idu Kamionom A</td><td>Kamion A dobiva samo naloge koje može nositi.</td><td><code>test_teski_strojevi_ne_idu…</code></td></tr>
+    <tr><td>Preuzimanje prije isporuke, isti kamion</td><td>Model stanja; validator hvata obrnut redoslijed.</td><td><code>test_preuzimanje_prije_isporuke…</code></td></tr>
+    <tr><td>Povratak u bazu</td><td>Ruta se zatvara tek kad je kamion prazan.</td><td><code>test_obavezan_povratak_u_bazu</code></td></tr>
+    <tr><td>Radno vrijeme ≤ 9 h</td><td>Rezanje stanja + provjera ukupnog vremena.</td><td><code>test_radno_vrijeme_9h…</code></td></tr>
+    <tr><td>Jasno upozorenje za neizvršive naloge</td><td>Svaki neizvršen nalog ima razlog.</td><td><code>test_limit_4h_odbija…</code></td></tr>
+    <tr><td>Najmanja kilometraža</td><td>Egzaktni DP; usporedba s brute-forceom i OR-Toolsom.</td><td><code>test_dp_je_optimalan_kao_brute_force</code></td></tr>
+  </table>
+
+  <h2>Tri neovisne potvrde optimuma</h2>
+  <div class="grid2" style="grid-template-columns:1fr 1fr 1fr">
+    <div class="card"><h3>Brute force</h3><p>Na manjim primjerima isprobane su <b>sve</b> permutacije radnji – DP daje isti optimum.</p></div>
+    <div class="card"><h3>Google OR-Tools</h3><p>Isti problem u industrijskom solveru: <b>200,1 km</b> i <b>182,2 km</b> – isto kao DP.</p></div>
+    <div class="card"><h3>Ručni izračun</h3><p>Kamion A: √89 ≈ 9,4 + √290 ≈ 17,0 + √117 ≈ 10,8 = <b>37,2 km</b>; 37 min + 2 × 20 min = 1:17 h.</p></div>
+  </div>
+
+  <pre class="term" data-title="Pokretanje testova"><span class="p">$</span> pytest -v
+<span class="o">tests/test_constraints.py ..........................   26 testova poslovnih pravila
+tests/test_api.py .....                                5 testova REST API-ja
+31 passed</span></pre>
+</section>
+
+<!-- ============================================================ 9 PROBLEMI -->
+<section class="chapter" id="problemi">
+  <span class="anchor-key">TOCMARKproblemiTOCMARK</span>
+  <div class="eyebrow"><span class="no">9</span>Rješavanje problema</div>
+  <h1>Simptom → uzrok → rješenje</h1>
+  <table>
+    <tr><th style="width:30%">Simptom</th><th style="width:30%">Vjerojatni uzrok</th><th>Rješenje</th></tr>
+    <tr><td>Crveni okvir <b>„API nije dostupan”</b></td><td>Backend nije pokrenut (npr. u razvojnom načinu).</td><td>U mapi projekta pokrenite <code>uvicorn api.main:app</code>.</td></tr>
+    <tr><td>Na <code>localhost:8000</code> piše <code>{"detail":"Not Found"}</code></td><td>Frontend nije izgrađen.</td><td><code>cd frontend</code> → <code>npm install</code> → <code>npm run build</code>, zatim ponovno pokrenite uvicorn.</td></tr>
+    <tr><td><code>address already in use</code> / port 8000 zauzet</td><td>Aplikacija već radi ili port koristi drugi program.</td><td>Zatvorite prethodni terminal ili pokrenite na drugom portu: <code>uvicorn api.main:app --port 8001</code>.</td></tr>
+    <tr><td><code>npm run build</code> javlja grešku o verziji</td><td>Prestar Node.js.</td><td>Instalirajte Node.js 20.19+ ili 22 LTS i ponovite <code>npm install</code>.</td></tr>
+    <tr><td><code>'uvicorn' is not recognized</code> / <code>command not found</code></td><td>Python paketi nisu instalirani ili virtualno okruženje nije aktivirano.</td><td>Aktivirajte <code>.venv</code> i pokrenite <code>pip install -r requirements.txt</code>; ili <code>python -m uvicorn api.main:app</code>.</td></tr>
+    <tr><td>„Ulazni podaci nisu ispravni – raspored nije izračunat”</td><td>Neispravan unos u tablicama.</td><td>Ispravite stavke s popisa ili kliknite <b>Vrati zadane podatke</b>.</td></tr>
+    <tr><td>Žuti okvir „Heuristički raspored”</td><td>Neki kamion ima više od 12 mogućih naloga.</td><td>Očekivano za velike primjere; raspored je izvediv i provjeren, ali nije dokazano optimalan.</td></tr>
+    <tr><td>Izmjene koda frontenda se ne vide na :8000</td><td>Poslužuje se stari build.</td><td>Ponovno <code>npm run build</code> ili koristite razvojni način (<code>npm run dev</code>, port 5173).</td></tr>
+  </table>
+
+  <div class="box tip"><div class="t"><span class="ico">✓</span>Brza dijagnostika</div>
+    <p>Otvorite <code>http://localhost:8000/api/health</code> – odgovor <code>{"status":"ok"}</code> znači da backend radi.
+      Na <code>/docs</code> možete ručno poslati zahtjev za optimizaciju i vidjeti cijeli odgovor.</p></div>
+</section>
+
+<!-- ============================================================ 10 DODATAK -->
+<section class="chapter" id="dodatak">
+  <span class="anchor-key">TOCMARKdodatakTOCMARK</span>
+  <div class="eyebrow"><span class="no">10</span>Dodatak</div>
+  <h1>REST API, struktura projekta i pojmovnik</h1>
+
+  <h2>REST API</h2>
+  <table>
+    <tr><th>Metoda i put</th><th>Opis</th></tr>
+    <tr><td><code>GET /api/health</code></td><td>Provjera rada backenda.</td></tr>
+    <tr><td><code>GET /api/defaults</code></td><td>Ulazni podaci i postavke iz zadatka.</td></tr>
+    <tr><td><code>POST /api/optimize</code></td><td>Tijelo: <code>trucks</code>, <code>machines</code>, <code>locations</code>, <code>orders</code>, <code>settings</code>. Odgovor: <code>plan</code> (kamioni, koraci, vremenska crta, neizvršivi nalozi, rezultat validatora), <code>scenarios</code>, <code>insight</code> (zamka), <code>problems</code> (greške unosa).</td></tr>
+    <tr><td><code>GET /docs</code></td><td>Interaktivna dokumentacija (Swagger UI).</td></tr>
+  </table>
+  <pre class="term" data-title="Primjer: optimizacija sa zadanim podacima"><span class="p">$</span> curl -s localhost:8000/api/defaults &gt; zadano.json
+<span class="p">$</span> curl -s -X POST localhost:8000/api/optimize -H "Content-Type: application/json" -d @zadano.json
+<span class="o">{"problems": [], "plan": {"total_km": 200.1, "orders_done": 10, "valid": true, ...}, ...}</span></pre>
+
+  <h2>Struktura projekta</h2>
+  <table>
+    <tr><th style="width:34%">Putanja</th><th>Sadržaj</th></tr>
+    <tr><td><code>api/main.py</code></td><td>FastAPI – REST API; poslužuje i izgrađeni frontend.</td></tr>
+    <tr><td><code>frontend/</code></td><td>React + TypeScript sučelje (Vite, Tailwind CSS, Motion).</td></tr>
+    <tr><td><code>optimizer/solver.py</code></td><td>Egzaktni algoritam (DP) i optimalna podjela naloga.</td></tr>
+    <tr><td><code>optimizer/heuristic.py</code></td><td>Heuristika za veće probleme.</td></tr>
+    <tr><td><code>optimizer/validate.py</code></td><td>Nezavisna provjera svih ograničenja.</td></tr>
+    <tr><td><code>optimizer/insight.py</code></td><td>Objašnjenje zamke s 9 h.</td></tr>
+    <tr><td><code>optimizer/data.py</code></td><td>Ulazni podaci zadatka i provjera unosa.</td></tr>
+    <tr><td><code>tests/</code></td><td>31 automatski test (poslovna pravila i API).</td></tr>
+    <tr><td><code>app.py</code></td><td>Rezervno Streamlit sučelje.</td></tr>
+    <tr><td><code>tools/</code></td><td>OR-Tools provjera, snimanje videa, izrada ovih uputa.</td></tr>
+    <tr><td><code>docs/</code></td><td>Video demonstracija, titlovi, snimke zaslona, ove upute.</td></tr>
+  </table>
+
+  <div style="break-inside: avoid">
+  <h2>Pojmovnik</h2>
+  <table>
+    <tr><th style="width:24%">Pojam</th><th>Značenje</th></tr>
+    <tr><td>Nalog</td><td>Zadatak prijevoza jednog stroja od lokacije preuzimanja do lokacije isporuke.</td></tr>
+    <tr><td>Dionica</td><td>Vožnja između dvije uzastopne lokacije; udaljenost se zaokružuje na 0,1 km.</td></tr>
+    <tr><td>Baza (L0)</td><td>Polazište i obavezno odredište svakog kamiona; ujedno i lokacija naloga N04 i N05.</td></tr>
+    <tr><td>Dnevni limit</td><td>Najdulje dopušteno radno vrijeme vozača (zadano 9 h).</td></tr>
+    <tr><td>Teoretski minimum</td><td>Najmanja moguća kilometraža bez vremenskog ograničenja (182,2 km).</td></tr>
+    <tr><td>Dokazani optimum</td><td>Rezultat egzaktnog algoritma – bolji raspored uz ista pravila ne postoji.</td></tr>
+    <tr><td>Validator</td><td>Neovisni kod koji iz niza radnji ponovno računa km, teret, vrijeme i redoslijed.</td></tr>
+    <tr><td>Heuristika</td><td>Brza približna metoda za veće probleme; izvediva, ali ne nužno optimalna.</td></tr>
+  </table>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
